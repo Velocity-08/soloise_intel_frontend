@@ -5,7 +5,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 export const dynamic = "force-dynamic";
 
 type CookieToSet = { name: string; value: string; options: any; };
-type RouteContext = { params: { id: string } };
+type RouteContext = { params: Promise<{ id: string }> };
 
 function buildSupabaseClient(request: NextRequest, cookiesToSet: CookieToSet[]) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -25,6 +25,7 @@ function applyCookies(response: NextResponse, cookiesToSet: CookieToSet[]) {
 }
 
 export async function DELETE(request: NextRequest, context: RouteContext) {
+  const { id } = await context.params;
   const cookiesToSet: CookieToSet[] = [];
   const supabase = buildSupabaseClient(request, cookiesToSet);
   const admin = createSupabaseAdminClient();
@@ -36,7 +37,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     return response;
   }
 
-  const { data, error } = await admin.from("api_keys").update({ is_active: false }).eq("id", context.params.id).eq("user_id", user.id).select("id").maybeSingle();
+  const { data, error } = await admin.from("api_keys").update({ is_active: false }).eq("id", id).eq("user_id", user.id).select("id").maybeSingle();
 
   if (error) {
     const response = NextResponse.json({ ok: false, error: error.message }, { status: 500 });
