@@ -1,0 +1,2810 @@
+================================================================================
+FILE: ./frontend\next-env.d.ts
+================================================================================
+
+/// <reference types="next" />
+/// <reference types="next/image-types/global" />
+/// <reference path="./.next/types/routes.d.ts" />
+
+// NOTE: This file should not be edited
+// see https://nextjs.org/docs/app/api-reference/config/typescript for more information.
+
+
+
+================================================================================
+FILE: ./frontend\next.config.ts
+================================================================================
+
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  reactStrictMode: true,
+};
+
+export default nextConfig;
+
+
+
+================================================================================
+FILE: ./frontend\postcss.config.mjs
+================================================================================
+
+export default {
+  plugins: {
+    "@tailwindcss/postcss": {},
+  },
+};
+
+
+
+================================================================================
+FILE: ./frontend\tailwind.config.ts
+================================================================================
+
+import type { Config } from "tailwindcss";
+
+const config: Config = {
+  content: [
+    "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./components/**/*.{js,ts,jsx,tsx,mdx}",
+    "./lib/**/*.{js,ts,jsx,tsx,mdx}",
+  ],
+  theme: {
+    extend: {
+      fontFamily: {
+        sans: ["var(--font-inter)", "system-ui", "sans-serif"],
+      },
+    },
+  },
+  plugins: [],
+};
+
+export default config;
+
+
+
+================================================================================
+FILE: ./frontend\app\layout.tsx
+================================================================================
+
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+import SiteTopbar from "@/components/site-topbar";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+});
+
+export const metadata: Metadata = {
+  title: "Soloise Behavioural Intelligence API",
+  description: "Ranked behavioural intelligence, copy guidance, and API key management.",
+};
+
+async function getUserEmail() {
+  try {
+    const supabase = await createSupabaseServerClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    return user?.email ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export default async function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  const userEmail = await getUserEmail();
+
+  return (
+    <html lang="en">
+      <body className={`${inter.variable} bg-white text-[#0A0A0A] antialiased`}>
+        <SiteTopbar userEmail={userEmail} />
+        <div className="pt-14">{children}</div>
+      </body>
+    </html>
+  );
+}
+
+
+
+================================================================================
+FILE: ./frontend\app\page.tsx
+================================================================================
+
+import Link from "next/link";
+
+
+function CodePreview() {
+  const code = `import requests
+
+response = requests.post(
+    "https://api.soloise.com/recommend",
+    headers={"Authorization": "Bearer sk-sol-your_key"},
+    json={"query": "I want users to complete signup without dropping off", "top_n": 3}
+)
+
+principles = response.json()["principles"]
+print(principles[0]["principle_name"])  # → "Zeigarnik Effect"`;
+
+  return (
+    <div className="overflow-hidden rounded-[8px] border border-[#E5E5E5] bg-white">
+      <div className="flex items-center justify-between border-b border-[#E5E5E5] px-4 py-2.5">
+        <div className="flex items-center gap-2">
+          <span className="h-2.5 w-2.5 rounded-full bg-[#E5E5E5]" />
+          <span className="h-2.5 w-2.5 rounded-full bg-[#E5E5E5]" />
+          <span className="h-2.5 w-2.5 rounded-full bg-[#E5E5E5]" />
+        </div>
+        <span className="text-[12px] text-[#737373]">Python</span>
+      </div>
+
+      <pre className="overflow-x-auto p-5 text-left text-[13px] leading-6 text-[#0A0A0A]">
+        <code>{code}</code>
+      </pre>
+    </div>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <main className="bg-white">
+      <section className="mx-auto flex min-h-[calc(80vh-56px)] w-full max-w-[680px] flex-col items-center justify-center px-6 py-16 text-center">
+        <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-[#737373]">
+          SOLOISE API v1.0
+        </p>
+
+        <h1 className="mt-4 text-[36px] font-semibold tracking-tight text-[#0A0A0A] sm:text-[56px]">
+          Turn any text into ranked
+          <br />
+          behavioural intelligence.
+        </h1>
+
+        <p className="mt-5 max-w-[560px] text-[18px] leading-8 text-[#737373]">
+          The Soloise API analyses your input and returns the most relevant persuasion and behavioural
+          science principles from our 102-principle dataset — ranked, explained, and ready to use in
+          any Python workflow.
+        </p>
+
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+          <Link
+            href="/auth"
+            className="inline-flex h-10 items-center justify-center rounded-[6px] bg-[#0A0A0A] px-4 text-[14px] font-medium text-white transition hover:opacity-90"
+          >
+            Get started free →
+          </Link>
+          <Link
+            href="/dashboard/docs"
+            className="inline-flex h-10 items-center justify-center rounded-[6px] border border-[#E5E5E5] bg-white px-4 text-[14px] font-medium text-[#0A0A0A] transition hover:bg-[#FAFAFA]"
+          >
+            View docs
+          </Link>
+        </div>
+
+        <p className="mt-4 text-[13px] text-[#737373]">Free $3 credit on signup. No card required.</p>
+
+        <div className="mt-10 w-full">
+          <CodePreview />
+        </div>
+      </section>
+
+      <section className="border-y border-[#E5E5E5]">
+        <div className="grid grid-cols-1 divide-y divide-[#E5E5E5] md:grid-cols-3 md:divide-y-0 md:divide-x">
+          {[
+            ["102 Principles", "ranked from a 102-principle dataset"],
+            ["6 Pillars", "organised across six behavioural pillars"],
+            ["< 400ms avg latency", "built for fast Python workflows"],
+          ].map(([title, body]) => (
+            <div key={title} className="px-6 py-6 text-center">
+              <p className="text-[13px] font-medium text-[#0A0A0A]">{title}</p>
+              <p className="mt-2 text-[13px] text-[#737373]">{body}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-[1200px] px-6 py-16">
+        <div className="max-w-[760px]">
+          <h2 className="text-[24px] font-semibold text-[#0A0A0A]">What the API returns</h2>
+          <p className="mt-2 text-[18px] leading-8 text-[#737373]">
+            Send any text. Get back the exact behavioural principles your copy, product, or campaign needs.
+          </p>
+        </div>
+
+        <div className="mt-8 grid gap-4 lg:grid-cols-3">
+          <Card title="YOUR QUERY">
+            <p className="text-[13px] leading-7 text-[#0A0A0A]">
+              &quot;I want users to complete signup
+              <br />
+              without dropping off&quot;
+            </p>
+          </Card>
+
+          <div className="flex items-center justify-center rounded-[8px] border border-[#E5E5E5] bg-white p-6">
+            <p className="text-[32px] font-semibold text-[#0A0A0A]">→</p>
+          </div>
+
+          <Card title="API RETURNS">
+            <div className="space-y-2">
+              {[
+                "#1 Zeigarnik Effect",
+                "#2 Progress Gradient Effect",
+                "#3 Cognitive Ease",
+              ].map((item) => (
+                <div key={item} className="flex items-center gap-2 rounded-[4px] bg-[#F5F5F5] px-3 py-1.5">
+                  <span className="h-2.5 w-2.5 rounded-full bg-[#16A34A]" />
+                  <span className="text-[13px] text-[#0A0A0A]">{item}</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-[1200px] px-6 py-8">
+        <h2 className="text-[24px] font-semibold text-[#0A0A0A]">Built for every Python workflow</h2>
+        <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_1.2fr]">
+          <div className="rounded-[8px] border border-[#E5E5E5] bg-white p-6">
+            <div className="space-y-4 text-[15px] leading-7 text-[#0A0A0A]">
+              {[
+                "→ CRO & landing page copy",
+                "→ Email subject line optimisation",
+                "→ Onboarding flow design",
+                "→ Ad creative briefing",
+                "→ Product growth experiments",
+                "→ AI agent augmentation",
+              ].map((item) => (
+                <p key={item}>{item}</p>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-[8px] border border-[#E5E5E5] bg-white p-5">
+            <div className="overflow-hidden rounded-[8px] border border-[#E5E5E5] bg-[#FAFAFA] p-5 text-[13px] leading-6 text-[#0A0A0A]">
+              <pre className="overflow-x-auto">
+                <code>{`# In your LLM pipeline
+
+def enrich_with_psychology(copy: str) -> list:
+    r = requests.post(
+        "https://api.soloise.com/recommend",
+        headers={"Authorization": f"Bearer {API_KEY}"},
+        json={"query": copy, "top_n": 5}
+    )
+    return r.json()["principles"]
+
+# Use it anywhere
+principles = enrich_with_psychology(email_subject)`}</code>
+              </pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-[1200px] px-6 py-10">
+        <div className="mx-auto max-w-[480px]">
+          <h2 className="text-[24px] font-semibold text-[#0A0A0A]">Pricing</h2>
+          <p className="mt-2 text-[18px] leading-8 text-[#737373]">
+            We work with teams directly. No self-serve checkout.
+          </p>
+
+          <div className="mt-6 rounded-[8px] border border-[#E5E5E5] bg-white p-6">
+            <p className="text-[15px] font-semibold text-[#0A0A0A]">Enterprise &amp; Agency pricing</p>
+            <p className="mt-4 text-[14px] leading-7 text-[#0A0A0A]">
+              We don&apos;t do one-size credits. Tell us your use case and volume — we&apos;ll send you a plan
+              that makes sense.
+            </p>
+
+            <a
+              href="mailto:hello@soloise.com?subject=Soloise%20pricing%20enquiry"
+              className="mt-6 inline-flex h-10 items-center justify-center rounded-[6px] bg-[#0A0A0A] px-4 text-[14px] font-medium text-white transition hover:opacity-90"
+            >
+              Contact us for pricing →
+            </a>
+
+            <p className="mt-3 text-[13px] text-[#737373]">
+              Free $3 credit included on every new account to test before you commit.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <footer className="border-t border-[#E5E5E5]">
+        <div className="mx-auto flex max-w-[1200px] flex-col gap-3 px-6 py-4 text-[13px] text-[#737373] sm:flex-row sm:items-center sm:justify-between">
+          <p>© 2025 Soloise Datalabs. All rights reserved.</p>
+          <div className="flex gap-4">
+            <a href="#" className="hover:text-[#0A0A0A]">Docs</a>
+            <a href="#" className="hover:text-[#0A0A0A]">Privacy</a>
+            <a href="#" className="hover:text-[#0A0A0A]">Terms</a>
+          </div>
+        </div>
+      </footer>
+    </main>
+  );
+}
+
+function Card({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-[8px] border border-[#E5E5E5] bg-white p-6">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#737373]">{title}</p>
+      <div className="mt-4">{children}</div>
+    </div>
+  );
+}
+
+
+
+================================================================================
+FILE: ./frontend\app\api\auth\signin\route.ts
+================================================================================
+
+import { NextRequest, NextResponse } from "next/server";
+import { createServerClient } from "@supabase/ssr";
+
+export async function POST(request: NextRequest) {
+  const cookiesToSet: {
+    name: string;
+    value: string;
+    options: any;
+  }[] = [];
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!url || !anonKey) {
+    return NextResponse.json(
+      { ok: false, error: "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY." },
+      { status: 500 },
+    );
+  }
+
+  const supabase = createServerClient(url, anonKey, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
+      },
+      setAll(cookies) {
+        cookiesToSet.push(...(cookies as any[]));
+      },
+    },
+  });
+
+  let body: { email?: string; password?: string } = {};
+  try {
+    body = (await request.json()) as { email?: string; password?: string };
+  } catch {
+    return NextResponse.json({ ok: false, error: "Invalid JSON." }, { status: 400 });
+  }
+
+  const email = body.email?.trim();
+  const password = body.password ?? "";
+
+  if (!email || !password) {
+    return NextResponse.json({ ok: false, error: "Email and password are required." }, { status: 400 });
+  }
+
+  const { error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+
+  if (error) {
+    return NextResponse.json({ ok: false, error: error.message }, { status: 401 });
+  }
+
+  const response = NextResponse.json({ ok: true, message: "Signed in." });
+  cookiesToSet.forEach(({ name, value, options }) => {
+    response.cookies.set(name, value, options);
+  });
+  return response;
+}
+
+
+
+================================================================================
+FILE: ./frontend\app\api\auth\signup\route.ts
+================================================================================
+
+import { NextRequest, NextResponse } from "next/server";
+import { createServerClient } from "@supabase/ssr";
+
+export async function POST(request: NextRequest) {
+  const cookiesToSet: {
+    name: string;
+    value: string;
+    options: any;
+  }[] = [];
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!url || !anonKey) {
+    return NextResponse.json(
+      { ok: false, error: "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY." },
+      { status: 500 },
+    );
+  }
+
+  const supabase = createServerClient(url, anonKey, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
+      },
+      setAll(cookies) {
+        cookiesToSet.push(...(cookies as any[]));
+      },
+    },
+  });
+
+  let body: { email?: string; password?: string } = {};
+  try {
+    body = (await request.json()) as { email?: string; password?: string };
+  } catch {
+    return NextResponse.json({ ok: false, error: "Invalid JSON." }, { status: 400 });
+  }
+
+  const email = body.email?.trim();
+  const password = body.password ?? "";
+
+  if (!email || !password) {
+    return NextResponse.json({ ok: false, error: "Email and password are required." }, { status: 400 });
+  }
+
+  const redirectTo = new URL("/auth/callback", request.url).toString();
+
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: redirectTo,
+    },
+  });
+
+  if (error) {
+    return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+  }
+
+  const response = NextResponse.json({
+    ok: true,
+    message: data.session
+      ? "Account created and signed in."
+      : "Account created. Check your email to confirm, then log in.",
+  });
+
+  cookiesToSet.forEach(({ name, value, options }) => {
+    response.cookies.set(name, value, options);
+  });
+  return response;
+}
+
+
+
+================================================================================
+FILE: ./frontend\app\api\keys\route.ts
+================================================================================
+
+import { createHash, randomBytes } from "node:crypto";
+import { NextRequest, NextResponse } from "next/server";
+import { createServerClient } from "@supabase/ssr";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+
+export const dynamic = "force-dynamic";
+
+type CookieToSet = {
+  name: string;
+  value: string;
+  options: any;
+};
+
+function buildSupabaseClient(request: NextRequest, cookiesToSet: CookieToSet[]) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!url || !anonKey) {
+    throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY.");
+  }
+
+  return createServerClient(url, anonKey, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
+      },
+      setAll(cookies) {
+        cookiesToSet.push(...(cookies as CookieToSet[]));
+      },
+    },
+  });
+}
+
+function applyCookies(response: NextResponse, cookiesToSet: CookieToSet[]) {
+  for (const cookie of cookiesToSet) {
+    response.cookies.set(cookie.name, cookie.value, cookie.options);
+  }
+}
+
+function hashKey(rawKey: string) {
+  return createHash("sha256").update(rawKey).digest("hex");
+}
+
+function generateApiKey() {
+  const rawKey = `sk-sol-${randomBytes(20).toString("hex")}`;
+
+  return {
+    rawKey,
+    keyHash: hashKey(rawKey),
+    keyPrefix: rawKey.slice(0, 16),
+  };
+}
+
+export async function GET(request: NextRequest) {
+  const cookiesToSet: CookieToSet[] = [];
+  const supabase = buildSupabaseClient(request, cookiesToSet);
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    const response = NextResponse.json(
+      {
+        ok: false,
+        error: "Unauthorized",
+      },
+      {
+        status: 401,
+      },
+    );
+
+    applyCookies(response, cookiesToSet);
+    return response;
+  }
+
+  const admin = createSupabaseAdminClient();
+
+  const { data, error } = await admin
+    .from("api_keys")
+    .select(
+      `
+      id,
+      name,
+      key_prefix,
+      is_active,
+      created_at
+    `,
+    )
+    .eq("user_id", user.id)
+    .order("created_at", {
+      ascending: false,
+    });
+
+  if (error) {
+    const response = NextResponse.json(
+      {
+        ok: false,
+        error: error.message,
+      },
+      {
+        status: 500,
+      },
+    );
+
+    applyCookies(response, cookiesToSet);
+    return response;
+  }
+
+  const response = NextResponse.json(data ?? []);
+  applyCookies(response, cookiesToSet);
+  return response;
+}
+
+export async function POST(request: NextRequest) {
+  const cookiesToSet: CookieToSet[] = [];
+  const supabase = buildSupabaseClient(request, cookiesToSet);
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    const response = NextResponse.json(
+      {
+        ok: false,
+        error: "Unauthorized",
+      },
+      {
+        status: 401,
+      },
+    );
+
+    applyCookies(response, cookiesToSet);
+    return response;
+  }
+
+  let body: { name?: string } = {};
+
+  try {
+    body = await request.json();
+  } catch {
+    body = {};
+  }
+
+  const name = body.name?.trim() || "Default Key";
+
+  const { rawKey, keyHash, keyPrefix } = generateApiKey();
+  const admin = createSupabaseAdminClient();
+
+  const { data, error } = await admin
+    .from("api_keys")
+    .insert({
+      user_id: user.id,
+      name,
+      key_prefix: keyPrefix,
+      key_hash: keyHash,
+      is_active: true,
+    })
+    .select(
+      `
+      id,
+      name,
+      key_prefix,
+      is_active,
+      created_at
+    `,
+    )
+    .single();
+
+  if (error) {
+    const response = NextResponse.json(
+      {
+        ok: false,
+        error: error.message,
+      },
+      {
+        status: 500,
+      },
+    );
+
+    applyCookies(response, cookiesToSet);
+    return response;
+  }
+
+  const response = NextResponse.json({
+    ok: true,
+    key: rawKey,
+    api_key: data,
+  });
+
+  applyCookies(response, cookiesToSet);
+  return response;
+}
+
+
+
+================================================================================
+FILE: ./frontend\app\api\keys\[id]\route.ts
+================================================================================
+
+import { NextRequest, NextResponse } from "next/server";
+import { createServerClient } from "@supabase/ssr";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+
+export const dynamic = "force-dynamic";
+
+type CookieToSet = {
+  name: string;
+  value: string;
+  options: any;
+};
+
+type RouteContext = {
+  params: {
+    id: string;
+  };
+};
+
+function buildSupabaseClient(request: NextRequest, cookiesToSet: CookieToSet[]) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!url || !anonKey) {
+    throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY.");
+  }
+
+  return createServerClient(url, anonKey, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
+      },
+      setAll(cookies) {
+        cookiesToSet.push(...(cookies as CookieToSet[]));
+      },
+    },
+  });
+}
+
+function applyCookies(response: NextResponse, cookiesToSet: CookieToSet[]) {
+  for (const cookie of cookiesToSet) {
+    response.cookies.set(cookie.name, cookie.value, cookie.options);
+  }
+}
+
+export async function DELETE(request: NextRequest, context: RouteContext) {
+  const cookiesToSet: CookieToSet[] = [];
+  const supabase = buildSupabaseClient(request, cookiesToSet);
+  const admin = createSupabaseAdminClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    const response = NextResponse.json({ ok: false, error: "Unauthorized." }, { status: 401 });
+    applyCookies(response, cookiesToSet);
+    return response;
+  }
+
+  const { data, error } = await admin
+    .from("api_keys")
+    .update({ is_active: false })
+    .eq("id", context.params.id)
+    .eq("user_id", user.id)
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    const response = NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    applyCookies(response, cookiesToSet);
+    return response;
+  }
+
+  if (!data) {
+    const response = NextResponse.json({ ok: false, error: "Key not found." }, { status: 404 });
+    applyCookies(response, cookiesToSet);
+    return response;
+  }
+
+  const response = NextResponse.json({ ok: true, revoked: data.id });
+  applyCookies(response, cookiesToSet);
+  return response;
+}
+
+
+
+================================================================================
+FILE: ./frontend\app\api\recommend\route.ts
+================================================================================
+
+import { NextRequest, NextResponse } from "next/server";
+
+export const dynamic = "force-dynamic";
+
+function getBackendBase() {
+  return (
+    process.env.SOLIOSE_BACKEND_URL ||
+    process.env.NEXT_PUBLIC_SOLIOSE_BACKEND_URL ||
+    "http://localhost:8000"
+  ).replace(/\/$/, "");
+}
+
+export async function POST(request: NextRequest) {
+  let body: unknown = {};
+  try {
+    body = await request.json();
+  } catch {
+    body = {};
+  }
+
+  const authorization = request.headers.get("authorization") || "";
+
+  try {
+    const upstream = await fetch(`${getBackendBase()}/recommend`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(authorization ? { Authorization: authorization } : {}),
+      },
+      body: JSON.stringify(body),
+      cache: "no-store",
+    });
+
+    const text = await upstream.text();
+    let payload: any = {};
+    if (text) {
+      try {
+        payload = JSON.parse(text);
+      } catch {
+        payload = { success: false, error: text };
+      }
+    }
+
+    return NextResponse.json(payload, { status: upstream.status });
+  } catch (error: any) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: error?.message || "Upstream unavailable.",
+        code: "UPSTREAM_ERROR",
+      },
+      { status: 502 },
+    );
+  }
+}
+
+
+
+================================================================================
+FILE: ./frontend\app\auth\page.tsx
+================================================================================
+
+import { redirect } from "next/navigation";
+import AuthForm from "@/components/auth-form";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+
+export const dynamic = "force-dynamic";
+
+export default async function AuthPage() {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user) {
+    redirect("/dashboard");
+  }
+
+  return (
+    <main className="min-h-[calc(100vh-56px)] bg-white px-6 py-10">
+      <div className="flex min-h-[calc(100vh-80px)] items-center justify-center">
+        <AuthForm />
+      </div>
+    </main>
+  );
+}
+
+
+
+================================================================================
+FILE: ./frontend\app\auth\callback\route.ts
+================================================================================
+
+import { NextRequest, NextResponse } from "next/server";
+import { createServerClient } from "@supabase/ssr";
+
+export async function GET(request: NextRequest) {
+  const url = new URL(request.url);
+  const code = url.searchParams.get("code");
+
+  if (!code) {
+    return NextResponse.redirect(new URL("/auth?error=missing_code", url.origin));
+  }
+
+  const redirectUrl = new URL("/dashboard", url.origin);
+  const response = NextResponse.redirect(redirectUrl);
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            response.cookies.set(name, value, options);
+          });
+        },
+      },
+    },
+  );
+
+  const { error } = await supabase.auth.exchangeCodeForSession(code);
+
+  if (error) {
+    return NextResponse.redirect(new URL("/auth?error=oauth_failed", url.origin));
+  }
+
+  return response;
+}
+
+
+
+================================================================================
+FILE: ./frontend\app\dashboard\layout.tsx
+================================================================================
+
+import { redirect } from "next/navigation";
+import DashboardShell from "@/components/dashboard-shell";
+import { getDashboardSnapshot } from "@/lib/dashboard";
+
+export const dynamic = "force-dynamic";
+
+export default async function DashboardLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  const snapshot = await getDashboardSnapshot();
+
+  if (!snapshot) {
+    redirect("/auth");
+  }
+
+  return <DashboardShell userEmail={snapshot.user.email}>{children}</DashboardShell>;
+}
+
+
+
+================================================================================
+FILE: ./frontend\app\dashboard\page.tsx
+================================================================================
+
+import { redirect } from "next/navigation";
+import { getDashboardSnapshot } from "@/lib/dashboard";
+
+export const dynamic = "force-dynamic";
+
+function formatDate(value: string) {
+  return new Date(value).toLocaleString();
+}
+
+export default async function DashboardPage() {
+  const snapshot = await getDashboardSnapshot();
+
+  if (!snapshot) {
+    redirect("/auth");
+  }
+
+  const keyNameById = new Map(snapshot.keys.map((key) => [key.id, key.name]));
+  const lowCredits = snapshot.credits < 50;
+  const zeroCredits = snapshot.credits === 0;
+
+  return (
+    <section className="space-y-6">
+      <div>
+        <h1 className="text-[22px] font-semibold text-[#0A0A0A]">Overview</h1>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          label="Credits"
+          value={snapshot.credits}
+          suffix="remaining"
+          tone={zeroCredits ? "danger" : lowCredits ? "amber" : "default"}
+        />
+        <StatCard label="API Keys" value={snapshot.keyCount} suffix="active" />
+        <StatCard label="Total Calls" value={snapshot.totalCalls} suffix="this month" />
+        <StatCard
+          label="Last Latency"
+          value={snapshot.latestLatencyMs == null ? "—" : `${snapshot.latestLatencyMs} ms`}
+          suffix=""
+        />
+      </div>
+
+      <div className="rounded-[8px] border border-[#E5E5E5] bg-white">
+        <div className="border-b border-[#E5E5E5] px-4 py-3">
+          <h2 className="text-[14px] font-semibold text-[#0A0A0A]">Recent API calls</h2>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="bg-[#F5F5F5] text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-[#737373]">
+                <th className="px-4 py-3">Time</th>
+                <th className="px-4 py-3">Key used</th>
+                <th className="px-4 py-3">Query length</th>
+                <th className="px-4 py-3">Result</th>
+                <th className="px-4 py-3">Credits used</th>
+              </tr>
+            </thead>
+            <tbody>
+              {snapshot.recentCalls.length > 0 ? (
+                snapshot.recentCalls.map((call, index) => (
+                  <tr
+                    key={call.id}
+                    className={`border-t border-[#F5F5F5] text-[13px] ${
+                      index % 2 === 1 ? "bg-[#FAFAFA]" : "bg-white"
+                    }`}
+                  >
+                    <td className="px-4 py-3 text-[#737373]">{formatDate(call.created_at)}</td>
+                    <td className="px-4 py-3 text-[#0A0A0A]">
+                      {call.key_id ? keyNameById.get(call.key_id) ?? call.key_id : "—"}
+                    </td>
+                    <td className="px-4 py-3 text-[#0A0A0A]">{call.query_length ?? "—"}</td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-flex items-center gap-2 ${
+                          call.success
+                            ? "text-[#16A34A]"
+                            : "text-[#DC2626]"
+                        }`}
+                      >
+                        <span className="text-[16px] leading-none">●</span>
+                        <span>{call.success ? "Success" : "Error"}</span>
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-[#0A0A0A]">1</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td className="px-4 py-10 text-center text-[13px] text-[#737373]" colSpan={5}>
+                    No API calls yet.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  suffix,
+  tone = "default",
+}: {
+  label: string;
+  value: string | number;
+  suffix: string;
+  tone?: "default" | "amber" | "danger";
+}) {
+  const toneClass =
+    tone === "amber"
+      ? "text-[#D97706]"
+      : tone === "danger"
+        ? "text-[#DC2626]"
+        : "text-[#0A0A0A]";
+
+  return (
+    <div className="rounded-[8px] border border-[#E5E5E5] bg-white p-5">
+      <p className="text-[12px] font-medium text-[#737373]">{label}</p>
+      <p className={`mt-4 text-[32px] font-semibold tracking-tight ${toneClass}`}>{value}</p>
+      {suffix ? <p className="mt-1 text-[12px] text-[#737373]">{suffix}</p> : null}
+    </div>
+  );
+}
+
+
+
+================================================================================
+FILE: ./frontend\app\dashboard\docs\page.tsx
+================================================================================
+
+export const dynamic = "force-dynamic";
+
+const nav = [
+  { id: "quick-start", label: "Quick Start (1 min)" },
+  { id: "authentication", label: "Authentication" },
+  { id: "endpoints", label: "Endpoints" },
+  { id: "request-format", label: "Request format" },
+  { id: "response-format", label: "Response format" },
+  { id: "error-codes", label: "Error codes" },
+  { id: "limits", label: "Limits" },
+];
+
+export default function DocsPage() {
+  return (
+    <section className="space-y-6">
+      <div className="grid gap-6 lg:grid-cols-[180px_1fr]">
+        <aside className="lg:sticky lg:top-20 lg:h-fit">
+          <div className="rounded-[8px] border border-[#E5E5E5] bg-white p-4">
+            <div className="space-y-1 border-l-2 border-[#E5E5E5] pl-3">
+              {nav.map((item) => (
+                <a
+                  key={item.id}
+                  href={`#${item.id}`}
+                  className={`block border-l-2 py-1.5 pl-3 text-[13px] ${
+                    item.id === "quick-start"
+                      ? "border-[#0A0A0A] text-[#0A0A0A]"
+                      : "border-transparent text-[#737373]"
+                  }`}
+                >
+                  {item.label}
+                </a>
+              ))}
+            </div>
+          </div>
+        </aside>
+
+        <article className="space-y-8">
+          <section id="quick-start" className="space-y-4">
+            <h1 className="text-[22px] font-semibold text-[#0A0A0A]">Up and running in 60 seconds</h1>
+
+            <InfoBox>1. Sign up and get your API key</InfoBox>
+
+            <CodeBox>{`pip install requests`}</CodeBox>
+
+            <CodeBox>{`import requests
+
+API_KEY = "sk-sol-your_key_here"
+
+r = requests.post(
+    "https://api.soloise.com/recommend",
+    headers={"Authorization": f"Bearer {API_KEY}"},
+    json={"query": "help users convert faster on pricing page", "top_n": 3}
+)
+
+for principle in r.json()["principles"]:
+    print(f"{principle['principle_name']}: {principle['one_liner']}")`}</CodeBox>
+
+            <pre className="overflow-x-auto rounded-[8px] border border-[#E5E5E5] bg-[#FAFAFA] p-4 text-[13px] leading-6 text-[#16A34A]">
+              <code>{`Zeigarnik Effect: Incomplete tasks hijack the brain until they're finished.
+Loss Aversion: Losses feel twice as powerful as equivalent gains.
+Social Proof Gradient: People follow the crowd when unsure what to do.`}</code>
+            </pre>
+          </section>
+
+          <Section id="authentication" title="Authentication">
+            <p className="text-[14px] leading-7 text-[#0A0A0A]">
+              All requests must include an <code className="rounded-[3px] bg-[#F5F5F5] px-1 py-0.5">Authorization</code>{" "}
+              header:
+            </p>
+            <CodeBox>{`Authorization: Bearer sk-sol-your_key`}</CodeBox>
+            <p className="text-[14px] leading-7 text-[#0A0A0A]">
+              Keys are created in the dashboard. Each key shows only once. Revoked keys immediately stop working.
+            </p>
+          </Section>
+
+          <Section id="endpoints" title="POST /recommend">
+            <DataTable
+              rows={[
+                ["query", "string", "Yes", "—", "Any text. Your copy, headline, user problem."],
+                ["top_n", "integer", "No", "3", "How many principles to return. Max 10."],
+              ]}
+            />
+
+            <p className="text-[14px] leading-7 text-[#0A0A0A]">Response object explained:</p>
+            <pre className="overflow-x-auto rounded-[8px] border border-[#E5E5E5] bg-[#FAFAFA] p-4 text-[13px] leading-6 text-[#0A0A0A]">
+              <code>{`{
+  "success": true,
+  "principles": [
+    {
+      "id": "P1-001",
+      "principle_name": "Zeigarnik Effect",
+      "one_liner": "Incomplete tasks hijack the brain until they're finished.",
+      "plain_english": "...",
+      "when_to_use": "...",
+      "when_NOT_to_use": "...",
+      "example_copy": "...",
+      "power_level": "High",
+      "pillar": "Attention & Pattern Interrupts"
+    }
+  ],
+  "meta": {
+    "query_length": 58,
+    "latency_ms": 312,
+    "credits_remaining": 280
+  }
+}`}</code>
+            </pre>
+          </Section>
+
+          <Section id="request-format" title="Request format">
+            <p className="text-[14px] leading-7 text-[#0A0A0A]">
+              Send JSON with <code className="rounded-[3px] bg-[#F5F5F5] px-1 py-0.5">query</code> and optional{" "}
+              <code className="rounded-[3px] bg-[#F5F5F5] px-1 py-0.5">top_n</code>.
+            </p>
+          </Section>
+
+          <Section id="response-format" title="Response format">
+            <p className="text-[14px] leading-7 text-[#0A0A0A]">
+              A ranked list of behavioural principles, each with one-liners and implementation detail.
+            </p>
+          </Section>
+
+          <Section id="error-codes" title="Error codes">
+            <DataTable
+              rows={[
+                ["INVALID_KEY", "401", "Key missing or revoked"],
+                ["NO_CREDITS", "402", "Credit balance is zero"],
+                ["BAD_INPUT", "400", "Query too short or malformed"],
+                ["INTERNAL_ERROR", "500", "Contact support"],
+              ]}
+              headers={["Code", "HTTP", "Meaning"]}
+            />
+          </Section>
+
+          <Section id="limits" title="Limits">
+            <DataTable
+              rows={[
+                ["Max query length", "10,000 characters"],
+                ["Max top_n", "10"],
+                ["Rate limit", "60 requests / minute"],
+              ]}
+              headers={["", ""]}
+            />
+          </Section>
+        </article>
+      </div>
+    </section>
+  );
+}
+
+function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
+  return (
+    <section id={id} className="space-y-4">
+      <h2 className="text-[18px] font-semibold text-[#0A0A0A]">{title}</h2>
+      {children}
+    </section>
+  );
+}
+
+function InfoBox({ children }: { children: React.ReactNode }) {
+  return <div className="rounded-[8px] border border-[#E5E5E5] bg-white p-4 text-[14px] text-[#0A0A0A]">{children}</div>;
+}
+
+function CodeBox({ children }: { children: React.ReactNode }) {
+  return (
+    <pre className="overflow-x-auto rounded-[8px] border border-[#E5E5E5] bg-[#FAFAFA] p-4 text-[13px] leading-6 text-[#0A0A0A]">
+      <code>{children}</code>
+    </pre>
+  );
+}
+
+function DataTable({
+  rows,
+  headers,
+}: {
+  rows: string[][];
+  headers?: string[];
+}) {
+  const headerRow = headers ?? ["Parameter", "Type", "Required", "Default", "Description"];
+  return (
+    <div className="overflow-x-auto rounded-[8px] border border-[#E5E5E5] bg-white">
+      <table className="w-full border-collapse">
+        <thead>
+          <tr className="bg-[#F5F5F5] text-left text-[12px] font-semibold text-[#737373]">
+            {headerRow.map((h, index) => (
+              <th key={index} className="px-4 py-3">
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, index) => (
+            <tr key={index} className="border-t border-[#F5F5F5] text-[13px]">
+              {row.map((cell, cellIndex) => (
+                <td key={cellIndex} className="px-4 py-3 text-[#0A0A0A]">
+                  {cell}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+
+
+================================================================================
+FILE: ./frontend\app\dashboard\keys\page.tsx
+================================================================================
+
+import { redirect } from "next/navigation";
+import KeyManager from "@/components/key-manager";
+import { getDashboardSnapshot } from "@/lib/dashboard";
+
+export const dynamic = "force-dynamic";
+
+export default async function KeysPage() {
+  const snapshot = await getDashboardSnapshot();
+
+  if (!snapshot) {
+    redirect("/auth");
+  }
+
+  return (
+    <section className="space-y-6">
+      <div>
+        <h1 className="text-[22px] font-semibold text-[#0A0A0A]">API Keys</h1>
+      </div>
+
+      <KeyManager initialKeys={snapshot.keys} />
+    </section>
+  );
+}
+
+
+
+================================================================================
+FILE: ./frontend\app\dashboard\playground\page.tsx
+================================================================================
+
+import { redirect } from "next/navigation";
+import PlaygroundClient from "@/components/playground-client";
+import { getDashboardSnapshot } from "@/lib/dashboard";
+
+export const dynamic = "force-dynamic";
+
+export default async function PlaygroundPage() {
+  const snapshot = await getDashboardSnapshot();
+
+  if (!snapshot) {
+    redirect("/auth");
+  }
+
+  return (
+    <section className="space-y-6">
+      <PlaygroundClient creditsRemaining={snapshot.credits} initialKeys={snapshot.keys} />
+    </section>
+  );
+}
+
+
+
+================================================================================
+FILE: ./frontend\components\auth-form.tsx
+================================================================================
+
+"use client";
+
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+
+type Mode = "signin" | "signup";
+
+async function safeReadJson(response: Response) {
+  const text = await response.text();
+  if (!text) return null;
+  try {
+    return JSON.parse(text) as any;
+  } catch {
+    return { message: text };
+  }
+}
+
+function GoogleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
+      <path
+        fill="#EA4335"
+        d="M12 10.2v3.9h5.4c-.2 1.2-.9 2.3-1.8 3l2.9 2.3c1.7-1.6 2.7-4 2.7-6.8 0-.7-.1-1.3-.2-1.9H12z"
+      />
+      <path
+        fill="#34A853"
+        d="M6.6 14.5 5.8 15l-2.5 2c1.6 3 4.7 5 8.7 5 2.8 0 5.1-.9 6.8-2.6l-2.9-2.3c-.8.5-1.8.9-3.2.9-2.5 0-4.6-1.7-5.3-4.1z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M4.5 7.2 2 5.2C.9 7 .3 9 .3 11s.6 4 1.7 5.8l2.5-2c-.4-1-.6-2-.6-3.1s.2-2.1.6-3.1z"
+      />
+      <path
+        fill="#4285F4"
+        d="M12 4.8c1.5 0 2.9.5 4 1.5l3-3C17.1 1.5 14.9.6 12 .6 8 0 4.9 2 2 5.2l2.5 2c.7-2.4 3-4.4 5.5-4.4z"
+      />
+    </svg>
+  );
+}
+
+export default function AuthForm() {
+  const router = useRouter();
+  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
+  const [mode, setMode] = useState<Mode>("signin");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function signInWithGoogle() {
+    setLoading(true);
+    setError(null);
+    setNotice(null);
+
+    const redirectTo = `${window.location.origin}/auth/callback`;
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo,
+      },
+    });
+
+    if (error) {
+      setError(error.message);
+      setLoading(false);
+    }
+  }
+
+  async function submitEmailAuth(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setLoading(true);
+    setError(null);
+    setNotice(null);
+
+    try {
+      const endpoint = mode === "signin" ? "/api/auth/signin" : "/api/auth/signup";
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = (await safeReadJson(response)) as
+        | {
+            ok?: boolean;
+            message?: string;
+            error?: string;
+          }
+        | null;
+
+      if (!response.ok) {
+        setError(data?.error || data?.message || "Authentication failed.");
+        return;
+      }
+
+      if (mode === "signin") {
+        router.push("/dashboard");
+        router.refresh();
+        return;
+      }
+
+      setNotice(
+        data?.message ||
+          "Account created. Check your email to confirm, then log in.",
+      );
+
+      if (data?.message?.toLowerCase().includes("signed in")) {
+        router.push("/dashboard");
+        router.refresh();
+      }
+    } catch {
+      setError("Network error.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="mx-auto w-full max-w-[400px]">
+      <div className="rounded-[8px] border border-[#E5E5E5] bg-white p-10">
+        <div>
+          <p className="text-[20px] font-semibold tracking-tight text-[#0A0A0A]">Soloise</p>
+          <h1 className="mt-3 text-[24px] font-semibold tracking-tight text-[#0A0A0A]">
+            Sign in to your account
+          </h1>
+          <p className="mt-2 text-[13px] font-medium text-[#16A34A]">
+            Free $3 credit on first login.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={signInWithGoogle}
+          disabled={loading}
+          className="mt-6 inline-flex h-10 w-full items-center justify-center gap-2 rounded-[6px] border border-[#E5E5E5] bg-white px-4 text-[14px] font-medium text-[#0A0A0A] transition hover:bg-[#FAFAFA] disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <GoogleIcon />
+          Continue with Google
+        </button>
+
+        <div className="my-5 flex items-center gap-3 text-center text-[11px] text-[#737373]">
+          <span className="flex-1 border-t border-[#E5E5E5]" />
+          <span>or</span>
+          <span className="flex-1 border-t border-[#E5E5E5]" />
+        </div>
+
+        <div className="grid grid-cols-2 gap-0 overflow-hidden rounded-[6px]">
+          <button
+            type="button"
+            onClick={() => setMode("signin")}
+            className={`h-10 text-[14px] font-medium ${
+              mode === "signin"
+                ? "bg-[#0A0A0A] text-white"
+                : "bg-[#F5F5F5] text-[#0A0A0A]"
+            }`}
+          >
+            Sign in
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("signup")}
+            className={`h-10 text-[14px] font-medium ${
+              mode === "signup"
+                ? "bg-[#0A0A0A] text-white"
+                : "bg-[#F5F5F5] text-[#0A0A0A]"
+            }`}
+          >
+            Create account
+          </button>
+        </div>
+
+        <form onSubmit={submitEmailAuth} className="mt-5 space-y-4">
+          <label className="block">
+            <span className="mb-2 block text-[13px] font-medium text-[#0A0A0A]">Email</span>
+            <input
+              type="email"
+              autoComplete="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="h-10 w-full rounded-[6px] border border-[#E5E5E5] bg-white px-3.5 text-[14px] text-[#0A0A0A] outline-none placeholder:text-[#A3A3A3] focus:border-[#0A0A0A]"
+              placeholder="you@company.com"
+            />
+          </label>
+
+          <label className="block">
+            <span className="mb-2 block text-[13px] font-medium text-[#0A0A0A]">Password</span>
+            <input
+              type="password"
+              autoComplete={mode === "signin" ? "current-password" : "new-password"}
+              minLength={6}
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="h-10 w-full rounded-[6px] border border-[#E5E5E5] bg-white px-3.5 text-[14px] text-[#0A0A0A] outline-none placeholder:text-[#A3A3A3] focus:border-[#0A0A0A]"
+              placeholder="••••••••"
+            />
+          </label>
+
+          {error ? (
+            <div className="rounded-[8px] border border-[#FCA5A5] bg-[#FEF2F2] px-4 py-3 text-[13px] text-[#DC2626]">
+              {error}
+            </div>
+          ) : null}
+
+          {notice ? (
+            <div className="rounded-[8px] border border-[#16A34A] bg-[#F0FDF4] px-4 py-3 text-[13px] text-[#16A34A]">
+              {notice}
+            </div>
+          ) : null}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="inline-flex h-10 w-full items-center justify-center rounded-[6px] bg-[#0A0A0A] px-4 text-[14px] font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {loading ? "Working..." : mode === "signin" ? "Sign in" : "Create account"}
+          </button>
+        </form>
+
+        <p className="mt-5 text-[13px] leading-6 text-[#737373]">
+          By creating an account you agree to our Terms and Privacy Policy.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+
+
+================================================================================
+FILE: ./frontend\components\dashboard-shell.tsx
+================================================================================
+
+"use client";
+
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+
+const links = [
+  { href: "/dashboard", label: "Overview" },
+  { href: "/dashboard/keys", label: "API Keys" },
+  { href: "/dashboard/playground", label: "Playground" },
+  { href: "/dashboard/docs", label: "Documentation" },
+];
+
+export default function DashboardShell({
+  userEmail,
+  children,
+}: {
+  userEmail: string;
+  children: React.ReactNode;
+}) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
+  const [signingOut, setSigningOut] = useState(false);
+
+  async function signOut() {
+    setSigningOut(true);
+    await supabase.auth.signOut();
+    router.push("/auth");
+    router.refresh();
+    setSigningOut(false);
+  }
+
+  return (
+    <div className="min-h-[calc(100vh-56px)] bg-white">
+      <aside className="hidden lg:fixed lg:left-0 lg:top-14 lg:bottom-0 lg:block lg:w-[220px] lg:border-r lg:border-[#E5E5E5]">
+        <div className="flex h-full flex-col px-4 py-5">
+          <div className="pb-5">
+            <p className="text-[16px] font-semibold tracking-tight text-[#0A0A0A]">Soloise</p>
+            <p className="mt-1 truncate text-[11px] text-[#737373]">{userEmail}</p>
+          </div>
+
+          <nav className="space-y-1">
+            {links.map((link) => {
+              const active = pathname === link.href || pathname.startsWith(`${link.href}/`);
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`flex h-9 items-center border-l-2 px-4 text-[13px] font-medium transition ${
+                    active
+                      ? "border-l-[#0A0A0A] bg-[#F5F5F5] text-[#0A0A0A]"
+                      : "border-l-transparent text-[#737373] hover:bg-[#F5F5F5]"
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
+          </nav>
+
+          <div className="mt-auto pt-5">
+            <button
+              type="button"
+              onClick={signOut}
+              disabled={signingOut}
+              className="text-[13px] font-medium text-[#DC2626] transition hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {signingOut ? "Signing out..." : "Sign out"}
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <div className="px-6 py-6 lg:pl-[244px] lg:pr-6">
+        <div className="lg:hidden">
+          <div className="mb-5 rounded-[8px] border border-[#E5E5E5] bg-white p-3">
+            <p className="text-[16px] font-semibold text-[#0A0A0A]">Soloise</p>
+            <p className="mt-1 text-[11px] text-[#737373]">{userEmail}</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {links.map((link) => {
+                const active = pathname === link.href || pathname.startsWith(`${link.href}/`);
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={`rounded-[6px] border px-3 py-2 text-[13px] font-medium ${
+                      active
+                        ? "border-[#0A0A0A] bg-[#0A0A0A] text-white"
+                        : "border-[#E5E5E5] bg-white text-[#0A0A0A]"
+                    }`}
+                  >
+                    {link.label}
+                  </Link>
+                );
+              })}
+            </div>
+            <button
+              type="button"
+              onClick={signOut}
+              disabled={signingOut}
+              className="mt-3 text-[13px] font-medium text-[#DC2626] disabled:opacity-60"
+            >
+              {signingOut ? "Signing out..." : "Sign out"}
+            </button>
+          </div>
+        </div>
+
+        <main className="min-w-0">{children}</main>
+      </div>
+    </div>
+  );
+}
+
+
+
+================================================================================
+FILE: ./frontend\components\key-manager.tsx
+================================================================================
+
+"use client";
+
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+
+type Key = {
+  id: string;
+  name: string;
+  key_prefix?: string | null;
+  is_active: boolean;
+  created_at: string;
+};
+
+type Props = {
+  initialKeys: Key[];
+};
+
+type SavedKey = {
+  id: string;
+  name: string;
+  key_prefix: string;
+  raw_key: string;
+};
+
+async function safeReadJson(response: Response) {
+  const text = await response.text();
+  if (!text) return null;
+  try {
+    return JSON.parse(text) as any;
+  } catch {
+    return { message: text };
+  }
+}
+
+function readSavedKeys(): SavedKey[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.sessionStorage.getItem("soloise.savedKeys");
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as SavedKey[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeSavedKeys(keys: SavedKey[]) {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.setItem("soloise.savedKeys", JSON.stringify(keys));
+}
+
+export default function KeyManager({ initialKeys }: Props) {
+  const [keys, setKeys] = useState<Key[]>(initialKeys);
+  const [name, setName] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [createdKey, setCreatedKey] = useState<string | null>(null);
+  const [copyState, setCopyState] = useState<"copy" | "copied">("copy");
+  const [error, setError] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setKeys(initialKeys);
+  }, [initialKeys]);
+
+  async function createKey() {
+    try {
+      setLoading(true);
+      setError("");
+
+      const response = await fetch("/api/keys", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name }),
+      });
+
+      const data = (await safeReadJson(response)) as
+        | {
+            ok?: boolean;
+            key?: string;
+            api_key?: {
+              id?: string;
+              name?: string;
+              key_prefix?: string | null;
+            };
+            error?: string;
+          }
+        | null;
+
+      if (!response.ok) {
+        throw new Error(data?.error || data?.message || "Failed to create key");
+      }
+
+      const rawKey = data?.key ?? null;
+      setCreatedKey(rawKey);
+
+      if (rawKey) {
+        const prefix = rawKey.slice(0, 16);
+        const saved = readSavedKeys();
+        const record = {
+          id: data?.api_key?.id ?? crypto.randomUUID(),
+          name: (data?.api_key?.name ?? name.trim()) || "Default Key",
+          key_prefix: data?.api_key?.key_prefix ?? prefix,
+          raw_key: rawKey,
+        };
+
+        const next = [record, ...saved.filter((item) => item.id !== record.id)];
+        writeSavedKeys(next);
+      }
+
+      const refreshed = await fetch("/api/keys", { cache: "no-store" });
+      const refreshedData = (await safeReadJson(refreshed)) as Key[] | null;
+
+      if (!refreshed.ok && !Array.isArray(refreshedData)) {
+        throw new Error("Failed to refresh keys");
+      }
+
+      setKeys(Array.isArray(refreshedData) ? refreshedData : []);
+      setName("");
+      setIsCreating(false);
+    } catch (err: any) {
+      setError(err?.message || "Failed to create key");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function revokeKey(id: string) {
+    try {
+      setError("");
+      setSaving(true);
+
+      const response = await fetch(`/api/keys/${id}`, {
+        method: "DELETE",
+      });
+
+      const data = (await safeReadJson(response)) as
+        | {
+            ok?: boolean;
+            error?: string;
+          }
+        | null;
+
+      if (!response.ok) {
+        throw new Error(data?.error || data?.message || "Failed to revoke key");
+      }
+
+      setKeys((prev) =>
+        prev.map((key) =>
+          key.id === id ? { ...key, is_active: false } : key,
+        ),
+      );
+      setConfirmingId(null);
+    } catch (err: any) {
+      setError(err?.message || "Failed to revoke key");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const activeCount = useMemo(() => keys.filter((key) => key.is_active).length, [keys]);
+
+  async function copyKey() {
+    if (!createdKey) return;
+    await navigator.clipboard.writeText(createdKey);
+    setCopyState("copied");
+    window.setTimeout(() => setCopyState("copy"), 2000);
+  }
+
+  return (
+    <section className="space-y-4">
+      <div className="flex flex-col gap-3 border-b border-[#E5E5E5] pb-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-[18px] font-semibold text-[#0A0A0A]">API Keys</h2>
+          <p className="mt-1 text-[13px] text-[#737373]">
+            {activeCount} active · {keys.length} total
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setIsCreating((current) => !current)}
+          className="inline-flex h-9 items-center justify-center rounded-[6px] bg-[#0A0A0A] px-4 text-[13px] font-medium text-white transition hover:opacity-90"
+        >
+          + Create key
+        </button>
+      </div>
+
+      {isCreating ? (
+        <div className="rounded-[8px] border border-[#E5E5E5] bg-white p-4">
+          <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Key name"
+              className="h-10 w-full rounded-[6px] border border-[#E5E5E5] px-3.5 text-[14px] text-[#0A0A0A] outline-none placeholder:text-[#A3A3A3] focus:border-[#0A0A0A]"
+            />
+            <button
+              type="button"
+              onClick={createKey}
+              disabled={loading}
+              className="inline-flex h-10 items-center justify-center rounded-[6px] bg-[#0A0A0A] px-4 text-[13px] font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {loading ? "Creating..." : "Create"}
+            </button>
+          </div>
+          {error ? <p className="mt-3 text-[13px] text-[#DC2626]">{error}</p> : null}
+        </div>
+      ) : null}
+
+      {createdKey ? (
+        <div className="rounded-[8px] border border-[#D97706] bg-[#FFFBEB] p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-[14px] font-medium text-[#0A0A0A]">
+                ⚠ Copy your key now. It will not be shown again.
+              </p>
+              <code className="mt-3 block break-all text-[14px] text-[#0A0A0A]">
+                {createdKey}
+              </code>
+            </div>
+
+            <button
+              type="button"
+              onClick={copyKey}
+              className="inline-flex h-9 items-center justify-center rounded-[6px] border border-[#E5E5E5] bg-white px-3 text-[12px] font-medium text-[#0A0A0A] transition hover:bg-[#FAFAFA]"
+            >
+              {copyState === "copied" ? "Copied ✓" : "[Copy]"}
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="rounded-[8px] border border-[#E5E5E5] bg-white">
+        {keys.length === 0 ? (
+          <div className="flex min-h-[260px] flex-col items-center justify-center gap-3 px-6 text-center text-[#737373]">
+            <p className="text-[14px]">No API keys yet.</p>
+            <button
+              type="button"
+              onClick={() => setIsCreating(true)}
+              className="text-[13px] font-medium text-[#2563EB]"
+            >
+              + Create your first key
+            </button>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-[#F5F5F5] text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-[#737373]">
+                  <th className="px-4 py-3">Name</th>
+                  <th className="px-4 py-3">Key prefix</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Created</th>
+                  <th className="px-4 py-3">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {keys.map((key, index) => (
+                  <tr
+                    key={key.id}
+                    className={`border-t border-[#F5F5F5] text-[13px] ${
+                      index % 2 === 1 ? "bg-[#FAFAFA]" : "bg-white"
+                    }`}
+                  >
+                    <td className="px-4 py-3 font-medium text-[#0A0A0A]">{key.name}</td>
+                    <td className="px-4 py-3 font-mono text-[#737373]">{key.key_prefix ?? "—"}</td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-flex rounded-[4px] border px-2 py-1 text-[11px] font-medium ${
+                          key.is_active
+                            ? "border-[#DCFCE7] bg-[#F0FDF4] text-[#16A34A]"
+                            : "border-[#FECACA] bg-[#FEF2F2] text-[#DC2626]"
+                        }`}
+                      >
+                        {key.is_active ? "Active" : "Revoked"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-[#737373]">
+                      {new Date(key.created_at).toLocaleDateString()}
+                    </td>
+                    <td className="px-4 py-3">
+                      {key.is_active ? (
+                        confirmingId === key.id ? (
+                          <div className="flex flex-wrap items-center gap-3">
+                            <span className="text-[12px] text-[#737373]">Are you sure?</span>
+                            <button
+                              type="button"
+                              onClick={() => revokeKey(key.id)}
+                              disabled={saving}
+                              className="text-[13px] font-medium text-[#DC2626] disabled:opacity-60"
+                            >
+                              Yes, revoke
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmingId(null)}
+                              className="text-[13px] font-medium text-[#0A0A0A]"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setConfirmingId(key.id)}
+                            className="text-[13px] font-medium text-[#DC2626]"
+                          >
+                            Revoke
+                          </button>
+                        )
+                      ) : (
+                        <span className="text-[13px] text-[#737373]">—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+
+
+================================================================================
+FILE: ./frontend\components\playground-client.tsx
+================================================================================
+
+"use client";
+
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+
+type DashboardKey = {
+  id: string;
+  name: string;
+  key_prefix: string | null;
+  is_active: boolean;
+  created_at: string;
+};
+
+type ResultItem = {
+  id?: string;
+  principle_name?: string;
+  one_liner?: string;
+  power_level?: string;
+  powerLevel?: string;
+  when_to_use?: string;
+  when_NOT_to_use?: string;
+  example_copy?: string;
+  whenToUse?: string;
+  whenNotToUse?: string;
+  exampleCopy?: string;
+  plain_english?: string;
+};
+
+type SavedKey = {
+  id: string;
+  name: string;
+  key_prefix: string;
+  raw_key: string;
+};
+
+type Props = {
+  creditsRemaining: number;
+  initialKeys: DashboardKey[];
+};
+
+async function safeReadJson(response: Response) {
+  const text = await response.text();
+  if (!text) return null;
+  try {
+    return JSON.parse(text) as any;
+  } catch {
+    return { message: text };
+  }
+}
+
+function readSavedKeys(): SavedKey[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.sessionStorage.getItem("soloise.savedKeys");
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as SavedKey[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function codeForLanguage(language: "python" | "curl" | "node", keyLabel: string) {
+  const prefix = keyLabel || "sk-sol-••••••••••••";
+  if (language === "curl") {
+    return `curl -X POST /api/recommend \\
+  -H "Authorization: Bearer ${prefix}" \\
+  -H "Content-Type: application/json" \\
+  -d '{"query": "your query here", "top_n": 3}'`;
+  }
+
+  if (language === "node") {
+    return `const res = await fetch("/api/recommend", {
+  method: "POST",
+  headers: {
+    "Authorization": "Bearer ${prefix}",
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({ query: "your query here", top_n: 3 })
+});
+const data = await res.json();
+console.log(data.results?.[0]?.principle_name ?? data.principles?.[0]?.principle_name);`;
+  }
+
+  return `import requests
+
+API_KEY = "${prefix}"  # from your key selector
+
+response = requests.post(
+    "/api/recommend",
+    headers={
+        "Authorization": f"Bearer {API_KEY}",
+        "Content-Type": "application/json"
+    },
+    json={
+        "query": "your query here",
+        "top_n": 3
+    }
+)
+
+data = response.json()
+for p in data["results"]:
+    print(p["principle_name"], "—", p["one_liner"])`;
+}
+
+export default function PlaygroundClient({ creditsRemaining, initialKeys }: Props) {
+  const [query, setQuery] = useState("I want users to complete signup without dropping off");
+  const [topN, setTopN] = useState<1 | 3 | 5 | 10>(3);
+  const [language, setLanguage] = useState<"python" | "curl" | "node">("python");
+  const [selectedKeyId, setSelectedKeyId] = useState<string>("");
+  const [usableKeys, setUsableKeys] = useState<SavedKey[]>([]);
+  const [running, setRunning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [results, setResults] = useState<ResultItem[]>([]);
+  const [credits, setCredits] = useState(creditsRemaining);
+  const [expanded, setExpanded] = useState<Record<number, boolean>>({});
+  const [copyLabel, setCopyLabel] = useState<"Copy" | "Copied ✓">("Copy");
+
+  useEffect(() => {
+    const saved = readSavedKeys();
+    setUsableKeys(saved);
+
+    if (saved.length > 0) {
+      setSelectedKeyId(saved[0].id);
+    }
+  }, []);
+
+  const availableKeys = useMemo(() => {
+    const fromServer = initialKeys.map((key) => {
+      const match = usableKeys.find((saved) => saved.key_prefix === (key.key_prefix ?? ""));
+      return {
+        id: key.id,
+        name: key.name,
+        key_prefix: key.key_prefix ?? "",
+        raw_key: match?.raw_key ?? "",
+      };
+    });
+
+    const deduped: SavedKey[] = [];
+    const seen = new Set<string>();
+    for (const key of [...usableKeys, ...fromServer]) {
+      const marker = `${key.id}:${key.key_prefix}`;
+      if (seen.has(marker)) continue;
+      seen.add(marker);
+      deduped.push(key);
+    }
+    return deduped;
+  }, [initialKeys, usableKeys]);
+
+  useEffect(() => {
+    if (!selectedKeyId && availableKeys.length > 0) {
+      setSelectedKeyId(availableKeys[0].id);
+    }
+  }, [availableKeys, selectedKeyId]);
+
+  const selectedKey = availableKeys.find((key) => key.id === selectedKeyId) ?? null;
+  const selectedRawKey = selectedKey?.raw_key || "";
+  const canRun = Boolean(selectedRawKey) && credits > 0 && !running;
+
+  async function runQuery() {
+    if (!selectedRawKey) {
+      setError("Create a key first.");
+      return;
+    }
+
+    setRunning(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/recommend", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${selectedRawKey}`,
+        },
+        body: JSON.stringify({ query, top_n: topN }),
+      });
+
+      const data = (await safeReadJson(response)) as any;
+
+      if (!response.ok) {
+        throw new Error(data?.error || data?.message || "Request failed.");
+      }
+
+      const items = (data?.results ?? data?.principles ?? []) as ResultItem[];
+      setResults(items);
+      setCredits(data?.credits_remaining ?? data?.meta?.credits_remaining ?? credits);
+      setExpanded({});
+    } catch (err: any) {
+      setError(err?.message || "Something went wrong.");
+    } finally {
+      setRunning(false);
+    }
+  }
+
+  const codeBlock = codeForLanguage(
+    language,
+    selectedRawKey ? `${selectedRawKey.slice(0, 16)}...` : "sk-sol-••••••••••••",
+  );
+
+  async function copyCode() {
+    await navigator.clipboard.writeText(codeBlock);
+    setCopyLabel("Copied ✓");
+    window.setTimeout(() => setCopyLabel("Copy"), 2000);
+  }
+
+  return (
+    <section className="space-y-0">
+      <div className="flex items-center justify-between border-b border-[#E5E5E5] px-6 py-3">
+        <p className="text-[14px] font-semibold text-[#0A0A0A]">Playground</p>
+        <p className="text-[12px] text-[#737373]">{credits} credits remaining</p>
+      </div>
+
+      {credits < 20 ? (
+        <div className="border-b border-[#FDE68A] bg-[#FFFBEB] px-6 py-3 text-[13px] text-[#D97706]">
+          You&apos;re running low on credits. Contact us to top up.
+        </div>
+      ) : null}
+
+      <div className="grid min-h-[calc(100vh-200px)] grid-cols-1 lg:grid-cols-2">
+        <div className="border-r border-[#E5E5E5] p-6">
+          <p className="text-[13px] font-medium text-[#737373]">Try the API</p>
+
+          <div className="mt-4">
+            <label className="mb-2 block text-[12px] font-medium text-[#0A0A0A]">Query</label>
+            <textarea
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Describe your use case, copy goal, or product problem..."
+              className="h-[140px] w-full rounded-[6px] border border-[#E5E5E5] bg-white p-3.5 text-[14px] text-[#0A0A0A] outline-none placeholder:text-[#A3A3A3] focus:border-[#0A0A0A]"
+            />
+          </div>
+
+          <div className="mt-4">
+            <p className="mb-2 text-[12px] font-medium text-[#0A0A0A]">Results (top_n)</p>
+            <div className="flex gap-2">
+              {[1, 3, 5, 10].map((value) => {
+                const active = topN === value;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setTopN(value as 1 | 3 | 5 | 10)}
+                    className={`h-7 w-8 rounded-[4px] text-[13px] font-medium transition ${
+                      active ? "bg-[#0A0A0A] text-white" : "bg-[#F5F5F5] text-[#0A0A0A]"
+                    }`}
+                  >
+                    {value}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {error ? (
+            <div className="mt-4 rounded-[8px] border border-[#FCA5A5] bg-[#FEF2F2] px-4 py-3 text-[13px] text-[#DC2626]">
+              {error}
+            </div>
+          ) : null}
+
+          <button
+            type="button"
+            onClick={runQuery}
+            disabled={!canRun}
+            className="mt-5 inline-flex h-10 w-full items-center justify-center rounded-[6px] bg-[#0A0A0A] px-4 text-[15px] font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {running ? (
+              <span className="inline-flex items-center gap-2">
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                Running...
+              </span>
+            ) : credits > 0 ? (
+              "Run →"
+            ) : (
+              "No credits remaining. Contact us →"
+            )}
+          </button>
+
+          {!selectedRawKey ? (
+            <div className="mt-4 text-[13px] text-[#737373]">
+              No usable key selected.{" "}
+              <Link href="/dashboard/keys" className="text-[#2563EB]">
+                Create a key first →
+              </Link>
+            </div>
+          ) : null}
+
+          <div className="mt-6 space-y-4">
+            {results.length > 0 ? (
+              results.map((item, index) => {
+                const isOpen = Boolean(expanded[index]);
+                return (
+                  <article
+                    key={`${item.id ?? index}-${index}`}
+                    className="rounded-[8px] border border-[#E5E5E5] bg-white p-5"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <p className="text-[11px] font-semibold text-[#737373]">#{index + 1}</p>
+                      <span className="rounded-[4px] border border-[#DCFCE7] bg-[#F0FDF4] px-2 py-1 text-[11px] font-medium text-[#16A34A]">
+                        {item.power_level ?? item.powerLevel ?? "High power"}
+                      </span>
+                    </div>
+
+                    <h3 className="mt-3 text-[16px] font-semibold text-[#0A0A0A]">
+                      {item.principle_name ?? "Principle"}
+                    </h3>
+                    <p className="mt-2 text-[14px] leading-6 text-[#737373]">
+                      {item.one_liner ?? item.plain_english ?? ""}
+                    </p>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpanded((current) => ({
+                          ...current,
+                          [index]: !current[index],
+                        }))
+                      }
+                      className="mt-4 text-[12px] font-medium text-[#2563EB]"
+                    >
+                      {isOpen ? "− Hide detail" : "+ Show detail"}
+                    </button>
+
+                    {isOpen ? (
+                      <div className="mt-4 space-y-3 border-t border-[#F5F5F5] pt-4">
+                        <DetailRow label="When to use" value={item.when_to_use ?? item.whenToUse ?? "—"} />
+                        <DetailRow
+                          label="When NOT to use"
+                          value={item.when_NOT_to_use ?? item.whenNotToUse ?? "—"}
+                        />
+                        <DetailRow label="Example copy" value={item.example_copy ?? item.exampleCopy ?? "—"} />
+                      </div>
+                    ) : null}
+                  </article>
+                );
+              })
+            ) : (
+              <div className="flex min-h-[240px] items-center justify-center rounded-[8px] border border-dashed border-[#E5E5E5] bg-white text-[13px] text-[#A3A3A3]">
+                Run a query to see results here.
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="p-6">
+          <div className="flex items-center justify-between gap-4">
+            <label className="block flex-1">
+              <span className="mb-2 block text-[12px] font-medium text-[#737373]">Your API key</span>
+              {availableKeys.length > 0 ? (
+                <select
+                  value={selectedKeyId}
+                  onChange={(e) => setSelectedKeyId(e.target.value)}
+                  className="h-10 w-full rounded-[6px] border border-[#E5E5E5] bg-white px-3.5 text-[13px] text-[#0A0A0A] outline-none focus:border-[#0A0A0A]"
+                >
+                  {availableKeys.map((key) => (
+                    <option key={key.id} value={key.id}>
+                      {key.name} · {key.key_prefix || "saved"}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <Link href="/dashboard/keys" className="text-[13px] text-[#2563EB]">
+                  Create a key first →
+                </Link>
+              )}
+            </label>
+          </div>
+
+          <div className="mt-4 border-b border-[#E5E5E5]">
+            <div className="flex gap-6">
+              {[
+                ["Python", "python"],
+                ["cURL", "curl"],
+                ["Node.js", "node"],
+              ].map(([label, value]) => {
+                const active = language === value;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setLanguage(value as "python" | "curl" | "node")}
+                    className={`border-b-2 px-0 pb-3 text-[13px] font-medium ${
+                      active
+                        ? "border-[#0A0A0A] text-[#0A0A0A]"
+                        : "border-transparent text-[#737373]"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="relative mt-4">
+            <button
+              type="button"
+              onClick={copyCode}
+              className="absolute right-3 top-3 rounded-[4px] border border-[#E5E5E5] bg-white px-2.5 py-1 text-[11px] font-medium text-[#0A0A0A]"
+            >
+              {copyLabel}
+            </button>
+            <pre className="overflow-x-auto rounded-[8px] border border-[#E5E5E5] bg-[#FAFAFA] p-4 text-[13px] leading-6 text-[#0A0A0A]">
+              <code>{codeBlock}</code>
+            </pre>
+          </div>
+
+          <p className="mt-3 text-[12px] text-[#A3A3A3]">
+            The key prefix shown is for reference. Use the full key from API Keys page.
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-[12px] font-medium text-[#737373]">{label}</p>
+      <p className="mt-1 text-[13px] leading-6 text-[#0A0A0A]">{value}</p>
+    </div>
+  );
+}
+
+
+
+================================================================================
+FILE: ./frontend\components\site-topbar.tsx
+================================================================================
+
+"use client";
+
+import Link from "next/link";
+import { useMemo, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+
+type Props = {
+  userEmail: string | null;
+};
+
+function NavLink({
+  href,
+  label,
+  active,
+}: {
+  href: string;
+  label: string;
+  active?: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      className={`inline-flex items-center border-b-2 px-0 py-1 text-[13px] font-medium transition ${
+        active
+          ? "border-[#0A0A0A] text-[#0A0A0A]"
+          : "border-transparent text-[#737373] hover:text-[#0A0A0A]"
+      }`}
+    >
+      {label}
+    </Link>
+  );
+}
+
+export default function SiteTopbar({ userEmail }: Props) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
+  const authed = Boolean(userEmail);
+  const [open, setOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+
+  const publicLinks = [
+    { href: "/dashboard/docs", label: "Docs" },
+    { href: "/dashboard/playground", label: "Playground" },
+  ];
+
+  const authedLinks = [
+    { href: "/dashboard", label: "Dashboard" },
+    { href: "/dashboard/keys", label: "Keys" },
+    { href: "/dashboard/playground", label: "Playground" },
+    { href: "/dashboard/docs", label: "Docs" },
+  ];
+
+  async function signOut() {
+    setSigningOut(true);
+    await supabase.auth.signOut();
+    router.push("/auth");
+    router.refresh();
+    setSigningOut(false);
+  }
+
+  const links = authed ? authedLinks : publicLinks;
+
+  return (
+    <header className="fixed inset-x-0 top-0 z-50 h-14 border-b border-[#E5E5E5] bg-white">
+      <div className="mx-auto flex h-full max-w-[1440px] items-center justify-between px-6 sm:px-6 lg:px-8">
+        <div className="flex items-center gap-3">
+          <Link href="/" className="text-[16px] font-semibold tracking-tight text-[#0A0A0A]">
+            Soloise<span aria-hidden="true">·</span>
+          </Link>
+          <span className="hidden rounded-full border border-[#E5E5E5] bg-[#F5F5F5] px-2.5 py-1 text-[11px] font-medium text-[#737373] sm:inline-flex">
+            Behavioural Intelligence API
+          </span>
+        </div>
+
+        <div className="hidden items-center gap-6 md:flex">
+          {links.map((link) => (
+            <NavLink
+              key={link.href}
+              href={link.href}
+              label={link.label}
+              active={pathname === link.href || pathname.startsWith(`${link.href}/`)}
+            />
+          ))}
+
+          {authed ? (
+            <>
+              <span className="text-[13px] text-[#737373]">{userEmail}</span>
+              <button
+                type="button"
+                onClick={signOut}
+                disabled={signingOut}
+                className="text-[13px] font-medium text-[#DC2626] transition hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {signingOut ? "Signing out..." : "Sign out"}
+              </button>
+            </>
+          ) : (
+            <div className="flex items-center gap-3">
+              <Link
+                href="/auth"
+                className="inline-flex h-10 items-center justify-center rounded-[6px] border border-[#0A0A0A] px-4 text-[14px] font-medium text-[#0A0A0A] transition hover:bg-[#FAFAFA]"
+              >
+                Sign in
+              </Link>
+              <Link
+                href="/auth"
+                className="inline-flex h-10 items-center justify-center rounded-[6px] bg-[#0A0A0A] px-4 text-[14px] font-medium text-white transition hover:opacity-90"
+              >
+                Get started
+              </Link>
+            </div>
+          )}
+        </div>
+
+        <button
+          type="button"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-[6px] border border-[#E5E5E5] bg-white text-[#0A0A0A] md:hidden"
+          aria-label="Open menu"
+          onClick={() => setOpen((current) => !current)}
+        >
+          <span className="text-xl leading-none">☰</span>
+        </button>
+      </div>
+
+      {open ? (
+        <div className="border-b border-[#E5E5E5] bg-white md:hidden">
+          <div className="mx-auto flex max-w-[1440px] flex-col gap-3 px-6 py-4">
+            {links.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => setOpen(false)}
+                className={`text-[14px] font-medium ${
+                  pathname === link.href ? "text-[#0A0A0A]" : "text-[#737373]"
+                }`}
+              >
+                {link.label}
+              </Link>
+            ))}
+
+            {authed ? (
+              <>
+                <span className="text-[13px] text-[#737373]">{userEmail}</span>
+                <button
+                  type="button"
+                  onClick={signOut}
+                  disabled={signingOut}
+                  className="text-left text-[14px] font-medium text-[#DC2626]"
+                >
+                  {signingOut ? "Signing out..." : "Sign out"}
+                </button>
+              </>
+            ) : (
+              <Link
+                href="/auth"
+                onClick={() => setOpen(false)}
+                className="text-[14px] font-medium text-[#0A0A0A]"
+              >
+                Sign in / Get started
+              </Link>
+            )}
+          </div>
+        </div>
+      ) : null}
+    </header>
+  );
+}
+
+
+
+================================================================================
+FILE: ./frontend\lib\dashboard.ts
+================================================================================
+
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+
+export type DashboardKey = {
+  id: string;
+  name: string;
+  key_prefix: string | null;
+  is_active: boolean;
+  created_at: string;
+};
+
+export type UsageLog = {
+  id: string;
+  key_id: string | null;
+  query_length: number | null;
+  top_n: number | null;
+  latency_ms: number | null;
+  success: boolean | null;
+  created_at: string;
+};
+
+export type DashboardSnapshot = {
+  user: {
+    id: string;
+    email: string;
+  };
+  credits: number;
+  keyCount: number;
+  totalCalls: number;
+  latestLatencyMs: number | null;
+  keys: DashboardKey[];
+  recentCalls: UsageLog[];
+};
+
+export async function getDashboardSnapshot(): Promise<DashboardSnapshot | null> {
+  const supabase = await createSupabaseServerClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return null;
+  }
+
+  const admin = createSupabaseAdminClient();
+
+  const [balanceRes, keysRes, countRes, latestRes, recentRes] = await Promise.all([
+    admin.from("credit_balances").select("credits").eq("user_id", user.id).maybeSingle(),
+    admin
+      .from("api_keys")
+      .select("id,name,key_prefix,is_active,created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false }),
+    admin.from("usage_logs").select("id", { count: "exact", head: true }).eq("user_id", user.id),
+    admin
+      .from("usage_logs")
+      .select("latency_ms")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    admin
+      .from("usage_logs")
+      .select("id,key_id,query_length,top_n,latency_ms,success,created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(10),
+  ]);
+
+  return {
+    user: {
+      id: user.id,
+      email: user.email ?? "",
+    },
+    credits: balanceRes.data?.credits ?? 0,
+    keyCount: keysRes.data?.length ?? 0,
+    totalCalls: countRes.count ?? 0,
+    latestLatencyMs: latestRes.data?.latency_ms ?? null,
+    keys: (keysRes.data ?? []) as DashboardKey[],
+    recentCalls: (recentRes.data ?? []) as UsageLog[],
+  };
+}
+
+
+
+================================================================================
+FILE: ./frontend\lib\supabase\admin.ts
+================================================================================
+
+import { createClient } from "@supabase/supabase-js";
+
+export function createSupabaseAdminClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !serviceRoleKey) {
+    throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.");
+  }
+
+  return createClient(url, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+}
+
+
+
+================================================================================
+FILE: ./frontend\lib\supabase\browser.ts
+================================================================================
+
+import { createBrowserClient } from "@supabase/ssr";
+
+export function createSupabaseBrowserClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!url || !anonKey) {
+    throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY.");
+  }
+
+  return createBrowserClient(url, anonKey);
+}
+
+
+
+================================================================================
+FILE: ./frontend\lib\supabase\server.ts
+================================================================================
+
+import { cookies } from "next/headers";
+import { createServerClient } from "@supabase/ssr";
+
+export async function createSupabaseServerClient() {
+  const cookieStore = await cookies();
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!url || !anonKey) {
+    throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY.");
+  }
+
+  return createServerClient(url, anonKey, {
+    cookies: {
+      getAll() {
+        return cookieStore.getAll();
+      },
+      setAll(cookiesToSet) {
+        void cookiesToSet;
+      },
+    },
+  });
+}
+
+
+
