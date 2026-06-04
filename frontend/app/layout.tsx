@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import SiteTopbar from "@/components/site-topbar";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import "./globals.css";
+import type { ReactNode } from "react";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -16,7 +17,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Soloise — Behavioral Intelligence API",
-  description: "Add behavioral intelligence to any AI workflow."
+  description: "A single-premium dashboard for auth, API keys, and usage analytics."
 };
 
 async function getUserEmail() {
@@ -31,14 +32,14 @@ async function getUserEmail() {
 
 export default async function RootLayout({
   children
-}: Readonly<{ children: React.ReactNode }>) {
+}: Readonly<{ children: ReactNode }>) {
   const userEmail = await getUserEmail();
 
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body>
         <SiteTopbar userEmail={userEmail} />
-        <div style={{ paddingTop: "var(--topbar-h, 56px)" }}>
+        <div style={{ paddingTop: "var(--topbar-h, 68px)" }}>
           {children}
         </div>
       </body>

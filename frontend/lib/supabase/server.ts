@@ -16,7 +16,7 @@ export async function createSupabaseServerClient() {
         return cookieStore.getAll();
       },
       setAll() {
-        // Server Components are read-only here; middleware persists refreshed cookies.
+        // Read-only in server components. Middleware persists refreshed cookies.
       }
     }
   });
