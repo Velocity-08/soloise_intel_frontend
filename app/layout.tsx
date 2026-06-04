@@ -17,7 +17,9 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Soloise — Behavioral Intelligence API",
-  description: "A single-premium dashboard for auth, API keys, and usage analytics."
+  description: "A single-premium dashboard for auth, API keys, and usage analytics.",
+  viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=yes",
+  themeColor: "#000000",
 };
 
 async function getUserEmail() {
@@ -37,7 +39,7 @@ export default async function RootLayout({
 
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
-      <body>
+      <body className="antialiased">
         <SiteTopbar userEmail={userEmail} />
         <div style={{ paddingTop: "var(--topbar-h, 68px)" }}>
           {children}

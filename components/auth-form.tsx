@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import type { FormEvent, ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
@@ -34,16 +34,50 @@ export default function AuthForm() {
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [redirectUrl, setRedirectUrl] = useState<string>("");
+
+  useEffect(() => {
+    // Set the correct redirect URL based on environment
+    const getRedirectUrl = () => {
+      // Production Vercel URL
+      if (process.env.NEXT_PUBLIC_VERCEL_URL) {
+        return `https://${process.env.NEXT_PUBLIC_VERCEL_URL}/auth/callback`;
+      }
+      // Local development
+      if (typeof window !== "undefined") {
+        return `${window.location.origin}/auth/callback`;
+      }
+      // Fallback to your production domain
+      return "https://soloise-intel-frontend-osl9lbd2r-vvbatras08-8039s-projects.vercel.app/auth/callback";
+    };
+    
+    setRedirectUrl(getRedirectUrl());
+  }, []);
 
   async function signInWithGoogle() {
     setLoading(true);
     setError(null);
     setNotice(null);
-    const redirectTo = `${window.location.origin}/auth/callback`;
+    
+    if (!redirectUrl) {
+      setError("Redirect URL not configured. Please refresh the page.");
+      setLoading(false);
+      return;
+    }
+    
+    console.log("Redirecting to:", redirectUrl); // For debugging
+    
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo }
+      options: { 
+        redirectTo: redirectUrl,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        }
+      }
     });
+    
     if (error) {
       setError(error.message);
       setLoading(false);
