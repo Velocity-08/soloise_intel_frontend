@@ -1,7 +1,7 @@
 import os
 
 # Root folder (your Next.js frontend folder)
-ROOT_DIR = "./frontend"
+ROOT_DIR = "."
 
 # Output file
 OUTPUT_FILE = "all_scripts.txt"

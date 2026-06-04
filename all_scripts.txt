@@ -1,0 +1,1860 @@
+================================================================================
+FILE: .\middleware.ts
+================================================================================
+
+import { NextRequest, NextResponse } from "next/server";
+import { createServerClient } from "@supabase/ssr";
+
+export async function middleware(request: NextRequest) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!url || !anonKey) {
+    return NextResponse.next();
+  }
+
+  const response = NextResponse.next();
+
+  const supabase = createServerClient(url, anonKey, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
+      },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value, options }) => {
+          response.cookies.set(name, value, options);
+        });
+      }
+    }
+  });
+
+  const { error } = await supabase.auth.getUser();
+
+  if (error?.code === "refresh_token_not_found") {
+    for (const cookie of request.cookies.getAll()) {
+      if (cookie.name.startsWith("sb-")) {
+        response.cookies.set(cookie.name, "", { path: "/", maxAge: 0 });
+      }
+    }
+  }
+
+  return response;
+}
+
+export const config = {
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"]
+};
+
+
+
+================================================================================
+FILE: .\next-env.d.ts
+================================================================================
+
+/// <reference types="next" />
+/// <reference types="next/image-types/global" />
+/// <reference path="./.next/types/routes.d.ts" />
+
+// NOTE: This file should not be edited
+// see https://nextjs.org/docs/app/api-reference/config/typescript for more information.
+
+
+
+================================================================================
+FILE: .\next.config.ts
+================================================================================
+
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  reactStrictMode: true
+};
+
+export default nextConfig;
+
+
+
+================================================================================
+FILE: .\postcss.config.mjs
+================================================================================
+
+export default {
+  plugins: {
+    "@tailwindcss/postcss": {}
+  }
+};
+
+
+
+================================================================================
+FILE: .\tailwind.config.ts
+================================================================================
+
+import type { Config } from "tailwindcss";
+
+const config: Config = {
+  content: [
+    "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./components/**/*.{js,ts,jsx,tsx,mdx}",
+    "./lib/**/*.{js,ts,jsx,tsx,mdx}"
+  ],
+  theme: {
+    extend: {
+      fontFamily: {
+        sans: ["var(--font-geist-sans)", "ui-sans-serif", "system-ui", "sans-serif"],
+        mono: ["var(--font-geist-mono)", "ui-monospace", "SFMono-Regular", "monospace"]
+      },
+      boxShadow: {
+        soft: "0 24px 80px rgba(0,0,0,0.35)"
+      }
+    }
+  },
+  plugins: []
+};
+
+export default config;
+
+
+
+================================================================================
+FILE: .\app\layout.tsx
+================================================================================
+
+import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import SiteTopbar from "@/components/site-topbar";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import "./globals.css";
+import type { ReactNode } from "react";
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"]
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"]
+});
+
+export const metadata: Metadata = {
+  title: "Soloise — Behavioral Intelligence API",
+  description: "A single-premium dashboard for auth, API keys, and usage analytics."
+};
+
+async function getUserEmail() {
+  try {
+    const supabase = await createSupabaseServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    return user?.email ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export default async function RootLayout({
+  children
+}: Readonly<{ children: ReactNode }>) {
+  const userEmail = await getUserEmail();
+
+  return (
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
+      <body>
+        <SiteTopbar userEmail={userEmail} />
+        <div style={{ paddingTop: "var(--topbar-h, 68px)" }}>
+          {children}
+        </div>
+      </body>
+    </html>
+  );
+}
+
+
+================================================================================
+FILE: .\app\page.tsx
+================================================================================
+
+import { getDashboardSnapshot } from "@/lib/dashboard";
+import DashboardView from "@/components/dashboard-view";
+
+export const dynamic = "force-dynamic";
+
+export default async function HomePage() {
+  const snapshot = await getDashboardSnapshot();
+  return <DashboardView snapshot={snapshot} />;
+}
+
+
+
+================================================================================
+FILE: .\app\api\auth\signin\route.ts
+================================================================================
+
+import { NextRequest, NextResponse } from "next/server";
+import { createServerClient } from "@supabase/ssr";
+
+export async function POST(request: NextRequest) {
+  const cookiesToSet: { name: string; value: string; options: any }[] = [];
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!url || !anonKey) {
+    return NextResponse.json({ ok: false, error: "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY." }, { status: 500 });
+  }
+
+  const supabase = createServerClient(url, anonKey, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
+      },
+      setAll(cookies) {
+        cookiesToSet.push(...(cookies as any[]));
+      }
+    }
+  });
+
+  let body: { email?: string; password?: string } = {};
+  try { body = await request.json(); } catch {
+    return NextResponse.json({ ok: false, error: "Invalid JSON." }, { status: 400 });
+  }
+
+  const email = body.email?.trim();
+  const password = body.password ?? "";
+  if (!email || !password) {
+    return NextResponse.json({ ok: false, error: "Email and password are required." }, { status: 400 });
+  }
+
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 401 });
+
+  const response = NextResponse.json({ ok: true, message: "Signed in." });
+  cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
+  return response;
+}
+
+
+
+================================================================================
+FILE: .\app\api\auth\signup\route.ts
+================================================================================
+
+import { NextRequest, NextResponse } from "next/server";
+import { createServerClient } from "@supabase/ssr";
+
+export async function POST(request: NextRequest) {
+  const cookiesToSet: { name: string; value: string; options: any }[] = [];
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!url || !anonKey) {
+    return NextResponse.json({ ok: false, error: "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY." }, { status: 500 });
+  }
+
+  const supabase = createServerClient(url, anonKey, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
+      },
+      setAll(cookies) {
+        cookiesToSet.push(...(cookies as any[]));
+      }
+    }
+  });
+
+  let body: { email?: string; password?: string } = {};
+  try { body = await request.json(); } catch {
+    return NextResponse.json({ ok: false, error: "Invalid JSON." }, { status: 400 });
+  }
+
+  const email = body.email?.trim();
+  const password = body.password ?? "";
+  if (!email || !password) {
+    return NextResponse.json({ ok: false, error: "Email and password are required." }, { status: 400 });
+  }
+
+  const redirectTo = new URL("/auth/callback", request.url).toString();
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: { emailRedirectTo: redirectTo }
+  });
+
+  if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+
+  const response = NextResponse.json({
+    ok: true,
+    message: data.session ? "Account created and signed in." : "Account created. Check your email to confirm, then log in."
+  });
+
+  cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
+  return response;
+}
+
+
+
+================================================================================
+FILE: .\app\api\keys\route.ts
+================================================================================
+
+import { createHash, randomBytes } from "node:crypto";
+import { NextRequest, NextResponse } from "next/server";
+import { createServerClient } from "@supabase/ssr";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+
+export const dynamic = "force-dynamic";
+
+type CookieToSet = { name: string; value: string; options: any; };
+
+function buildSupabaseClient(request: NextRequest, cookiesToSet: CookieToSet[]) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !anonKey) throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY.");
+
+  return createServerClient(url, anonKey, {
+    cookies: {
+      getAll() { return request.cookies.getAll(); },
+      setAll(cookies) { cookiesToSet.push(...(cookies as CookieToSet[])); }
+    }
+  });
+}
+
+function applyCookies(response: NextResponse, cookiesToSet: CookieToSet[]) {
+  for (const cookie of cookiesToSet) response.cookies.set(cookie.name, cookie.value, cookie.options);
+}
+
+function hashKey(rawKey: string) {
+  return createHash("sha256").update(rawKey).digest("hex");
+}
+
+function generateApiKey() {
+  const rawKey = `sk-sol-${randomBytes(20).toString("hex")}`;
+  return { rawKey, keyHash: hashKey(rawKey), keyPrefix: rawKey.slice(0, 16) };
+}
+
+export async function GET(request: NextRequest) {
+  const cookiesToSet: CookieToSet[] = [];
+  const supabase = buildSupabaseClient(request, cookiesToSet);
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    const response = NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+    applyCookies(response, cookiesToSet);
+    return response;
+  }
+
+  const admin = createSupabaseAdminClient();
+  const { data, error } = await admin.from("api_keys").select("id,name,key_prefix,is_active,created_at").eq("user_id", user.id).order("created_at", { ascending: false });
+
+  if (error) {
+    const response = NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    applyCookies(response, cookiesToSet);
+    return response;
+  }
+
+  const response = NextResponse.json(data ?? []);
+  applyCookies(response, cookiesToSet);
+  return response;
+}
+
+export async function POST(request: NextRequest) {
+  const cookiesToSet: CookieToSet[] = [];
+  const supabase = buildSupabaseClient(request, cookiesToSet);
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    const response = NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+    applyCookies(response, cookiesToSet);
+    return response;
+  }
+
+  let body: { name?: string } = {};
+  try { body = await request.json(); } catch { body = {}; }
+
+  const name = body.name?.trim() || "Default Key";
+  const { rawKey, keyHash, keyPrefix } = generateApiKey();
+  const admin = createSupabaseAdminClient();
+
+  const { data, error } = await admin.from("api_keys").insert({
+    user_id: user.id,
+    name,
+    key_prefix: keyPrefix,
+    key_hash: keyHash,
+    is_active: true
+  }).select("id,name,key_prefix,is_active,created_at").single();
+
+  if (error) {
+    const response = NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    applyCookies(response, cookiesToSet);
+    return response;
+  }
+
+  const response = NextResponse.json({ ok: true, key: rawKey, api_key: data });
+  applyCookies(response, cookiesToSet);
+  return response;
+}
+
+
+
+================================================================================
+FILE: .\app\api\keys\[id]\route.ts
+================================================================================
+
+import { NextRequest, NextResponse } from "next/server";
+import { createServerClient } from "@supabase/ssr";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+
+export const dynamic = "force-dynamic";
+
+type CookieToSet = { name: string; value: string; options: any; };
+type RouteContext = { params: Promise<{ id: string }> };
+
+function buildSupabaseClient(request: NextRequest, cookiesToSet: CookieToSet[]) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !anonKey) throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY.");
+
+  return createServerClient(url, anonKey, {
+    cookies: {
+      getAll() { return request.cookies.getAll(); },
+      setAll(cookies) { cookiesToSet.push(...(cookies as CookieToSet[])); }
+    }
+  });
+}
+
+function applyCookies(response: NextResponse, cookiesToSet: CookieToSet[]) {
+  for (const cookie of cookiesToSet) response.cookies.set(cookie.name, cookie.value, cookie.options);
+}
+
+export async function DELETE(request: NextRequest, context: RouteContext) {
+  const { id } = await context.params;
+  const cookiesToSet: CookieToSet[] = [];
+  const supabase = buildSupabaseClient(request, cookiesToSet);
+  const admin = createSupabaseAdminClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    const response = NextResponse.json({ ok: false, error: "Unauthorized." }, { status: 401 });
+    applyCookies(response, cookiesToSet);
+    return response;
+  }
+
+  const { data, error } = await admin.from("api_keys").update({ is_active: false }).eq("id", id).eq("user_id", user.id).select("id").maybeSingle();
+
+  if (error) {
+    const response = NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    applyCookies(response, cookiesToSet);
+    return response;
+  }
+
+  if (!data) {
+    const response = NextResponse.json({ ok: false, error: "Key not found." }, { status: 404 });
+    applyCookies(response, cookiesToSet);
+    return response;
+  }
+
+  const response = NextResponse.json({ ok: true, revoked: data.id });
+  applyCookies(response, cookiesToSet);
+  return response;
+}
+
+
+
+================================================================================
+FILE: .\app\api\recommend\route.ts
+================================================================================
+
+import { NextRequest, NextResponse } from "next/server";
+
+export const dynamic = "force-dynamic";
+
+function getBackendBase() {
+  return (process.env.SOLIOSE_BACKEND_URL || process.env.NEXT_PUBLIC_SOLIOSE_BACKEND_URL || "http://localhost:8000").replace(/\/$/, "");
+}
+
+export async function POST(request: NextRequest) {
+  let body: unknown = {};
+  try { body = await request.json(); } catch { body = {}; }
+
+  const authorization = request.headers.get("authorization") || "";
+
+  try {
+    const upstream = await fetch(`${getBackendBase()}/recommend`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(authorization ? { Authorization: authorization } : {})
+      },
+      body: JSON.stringify(body),
+      cache: "no-store"
+    });
+
+    const text = await upstream.text();
+    let payload: any = {};
+    if (text) {
+      try { payload = JSON.parse(text); } catch { payload = { success: false, error: text }; }
+    }
+
+    return NextResponse.json(payload, { status: upstream.status });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error?.message || "Upstream unavailable.", code: "UPSTREAM_ERROR" }, { status: 502 });
+  }
+}
+
+
+
+================================================================================
+FILE: .\app\auth\page.tsx
+================================================================================
+
+import { redirect } from "next/navigation";
+import AuthForm from "@/components/auth-form";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+
+export const dynamic = "force-dynamic";
+
+export default async function AuthPage() {
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (user) redirect("/dashboard");
+
+  return (
+    <main className="min-h-[calc(100vh-68px)] px-6 py-10">
+      <div className="mx-auto flex min-h-[calc(100vh-120px)] max-w-6xl items-center justify-center">
+        <AuthForm />
+      </div>
+    </main>
+  );
+}
+
+
+
+================================================================================
+FILE: .\app\auth\callback\route.ts
+================================================================================
+
+import { NextRequest, NextResponse } from "next/server";
+import { createServerClient } from "@supabase/ssr";
+
+export async function GET(request: NextRequest) {
+  const url = new URL(request.url);
+  const code = url.searchParams.get("code");
+
+  if (!code) return NextResponse.redirect(new URL("/auth?error=missing_code", url.origin));
+
+  const response = NextResponse.redirect(new URL("/dashboard", url.origin));
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            response.cookies.set(name, value, options);
+          });
+        }
+      }
+    }
+  );
+
+  const { error } = await supabase.auth.exchangeCodeForSession(code);
+  if (error) return NextResponse.redirect(new URL("/auth?error=oauth_failed", url.origin));
+
+  return response;
+}
+
+
+
+================================================================================
+FILE: .\app\dashboard\layout.tsx
+================================================================================
+
+import type { ReactNode } from "react";
+export const dynamic = "force-dynamic";
+
+export default function DashboardLayout({
+  children
+}: Readonly<{ children: ReactNode }>) {
+  return children;
+}
+
+
+================================================================================
+FILE: .\app\dashboard\page.tsx
+================================================================================
+
+import { getDashboardSnapshot } from "@/lib/dashboard";
+import DashboardView from "@/components/dashboard-view";
+
+export const dynamic = "force-dynamic";
+
+export default async function DashboardPage() {
+  const snapshot = await getDashboardSnapshot();
+  return <DashboardView snapshot={snapshot} />;
+}
+
+
+
+================================================================================
+FILE: .\app\dashboard\docs\page.tsx
+================================================================================
+
+import { redirect } from "next/navigation";
+
+export const dynamic = "force-dynamic";
+
+export default function DocsPage() {
+  redirect("/dashboard");
+}
+
+
+
+================================================================================
+FILE: .\app\dashboard\keys\page.tsx
+================================================================================
+
+import { redirect } from "next/navigation";
+
+export const dynamic = "force-dynamic";
+
+export default function KeysPage() {
+  redirect("/dashboard");
+}
+
+
+
+================================================================================
+FILE: .\app\dashboard\playground\page.tsx
+================================================================================
+
+import { redirect } from "next/navigation";
+
+export const dynamic = "force-dynamic";
+
+export default function PlaygroundPage() {
+  redirect("/dashboard");
+}
+
+
+
+================================================================================
+FILE: .\components\auth-form.tsx
+================================================================================
+
+"use client";
+
+import { useMemo, useState } from "react";
+import type { FormEvent, ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { ArrowRight, Sparkles, Shield, Zap } from "lucide-react";
+
+type Mode = "signin" | "signup";
+
+async function safeReadJson(response: Response) {
+  const text = await response.text();
+  if (!text) return null;
+  try { return JSON.parse(text) as any; } catch { return { message: text }; }
+}
+
+function GoogleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
+      <path fill="#EA4335" d="M12 10.2v3.9h5.4c-.2 1.2-.9 2.3-1.8 3l2.9 2.3c1.7-1.6 2.7-4 2.7-6.8 0-.7-.1-1.3-.2-1.9H12z" />
+      <path fill="#34A853" d="M6.6 14.5 5.8 15l-2.5 2c1.6 3 4.7 5 8.7 5 2.8 0 5.1-.9 6.8-2.6l-2.9-2.3c-.8.5-1.8.9-3.2.9-2.5 0-4.6-1.7-5.3-4.1z" />
+      <path fill="#FBBC05" d="M4.5 7.2 2 5.2C.9 7 .3 9 .3 11s.6 4 1.7 5.8l2.5-2c-.4-1-.6-2-.6-3.1s.2-2.1.6-3.1z" />
+      <path fill="#4285F4" d="M12 4.8c1.5 0 2.9.5 4 1.5l3-3C17.1 1.5 14.9.6 12 .6 8 0 4.9 2 2 5.2l2.5 2c.7-2.4 3-4.4 5.5-4.4z" />
+    </svg>
+  );
+}
+
+export default function AuthForm() {
+  const router = useRouter();
+  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
+  const [mode, setMode] = useState<Mode>("signin");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function signInWithGoogle() {
+    setLoading(true);
+    setError(null);
+    setNotice(null);
+    const redirectTo = `${window.location.origin}/auth/callback`;
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo }
+    });
+    if (error) {
+      setError(error.message);
+      setLoading(false);
+    }
+  }
+
+  async function submitEmailAuth(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setLoading(true);
+    setError(null);
+    setNotice(null);
+
+    try {
+      const endpoint = mode === "signin" ? "/api/auth/signin" : "/api/auth/signup";
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = (await safeReadJson(response)) as { ok?: boolean; message?: string; error?: string } | null;
+
+      if (!response.ok) {
+        setError(data?.error || data?.message || "Authentication failed.");
+        return;
+      }
+
+      if (mode === "signin") {
+        router.push("/dashboard");
+        router.refresh();
+        return;
+      }
+
+      setNotice(data?.message || "Account created.");
+      if (data?.message?.toLowerCase().includes("signed in")) {
+        router.push("/dashboard");
+        router.refresh();
+      }
+    } catch {
+      setError("Network error.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="grid w-full max-w-6xl gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+      <section className="relative overflow-hidden rounded-[28px] border border-white/10 bg-white/5 p-8 shadow-soft backdrop-blur-xl sm:p-10">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.18),transparent_35%),radial-gradient(circle_at_bottom_left,rgba(16,185,129,0.14),transparent_30%)]" />
+        <div className="relative">
+          <div className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-[12px] text-cyan-100">
+            <Sparkles className="h-3.5 w-3.5" />
+            Premium dashboard access
+          </div>
+
+          <h1 className="mt-6 max-w-xl text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+            One account.
+            <span className="block text-white/70">Keys, credits, and analytics in one place.</span>
+          </h1>
+
+          <p className="mt-5 max-w-2xl text-[15px] leading-7 text-white/60">
+            Sign in to unlock API key creation. Your starter credits stay attached to the first authenticated session, and your usage analytics live on the same dashboard.
+          </p>
+
+          <div className="mt-8 grid gap-4 sm:grid-cols-3">
+            <InfoChip icon={<Shield className="h-4 w-4" />} title="Secure" text="Supabase auth and protected keys" />
+            <InfoChip icon={<Zap className="h-4 w-4" />} title="Fast" text="Single-page workflow" />
+            <InfoChip icon={<ArrowRight className="h-4 w-4" />} title="Focused" text="No extra navigation clutter" />
+          </div>
+
+          <div className="mt-10 rounded-[24px] border border-white/10 bg-black/40 p-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <PreviewCard title="Dashboard" text="Locked until sign-in" />
+              <PreviewCard title="API keys" text="Create from the same screen" />
+              <PreviewCard title="Analytics" text="Selected key usage on demand" />
+              <PreviewCard title="Credits" text="Starter balance on first login" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-[28px] border border-white/10 bg-[#0b0b0d]/92 p-6 shadow-soft backdrop-blur-xl sm:p-8">
+        <div className="mx-auto w-full max-w-[460px]">
+          <div>
+            <p className="text-[13px] font-medium uppercase tracking-[0.2em] text-white/45">Authentication</p>
+            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white">
+              {mode === "signin" ? "Welcome back" : "Create your account"}
+            </h2>
+            <p className="mt-2 text-[14px] leading-6 text-white/55">
+              {mode === "signin"
+                ? "Open the dashboard, unlock your keys, and monitor every request from one panel."
+                : "Create an account to unlock the dashboard and receive starter credits on first login."}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={signInWithGoogle}
+            disabled={loading}
+            className="mt-7 inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 text-[14px] font-medium text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <GoogleIcon />
+            Continue with Google
+          </button>
+
+          <div className="my-5 flex items-center gap-3 text-center text-[11px] uppercase tracking-[0.18em] text-white/30">
+            <span className="flex-1 border-t border-white/10" />
+            <span>or email</span>
+            <span className="flex-1 border-t border-white/10" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-0 overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+            <button
+              type="button"
+              onClick={() => setMode("signin")}
+              className={`h-11 text-[14px] font-medium transition ${
+                mode === "signin" ? "bg-white text-black" : "bg-transparent text-white/70 hover:bg-white/5"
+              }`}
+            >
+              Sign in
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("signup")}
+              className={`h-11 text-[14px] font-medium transition ${
+                mode === "signup" ? "bg-white text-black" : "bg-transparent text-white/70 hover:bg-white/5"
+              }`}
+            >
+              Create account
+            </button>
+          </div>
+
+          <form onSubmit={submitEmailAuth} className="mt-5 space-y-4">
+            <label className="block">
+              <span className="mb-2 block text-[13px] font-medium text-white/80">Email</span>
+              <input
+                type="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="h-11 w-full rounded-2xl border border-white/10 bg-black/40 px-4 text-[14px] text-white outline-none placeholder:text-white/30 focus:border-cyan-300/40"
+                placeholder="you@company.com"
+              />
+            </label>
+
+            <label className="block">
+              <span className="mb-2 block text-[13px] font-medium text-white/80">Password</span>
+              <input
+                type="password"
+                autoComplete={mode === "signin" ? "current-password" : "new-password"}
+                minLength={6}
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="h-11 w-full rounded-2xl border border-white/10 bg-black/40 px-4 text-[14px] text-white outline-none placeholder:text-white/30 focus:border-cyan-300/40"
+                placeholder="••••••••"
+              />
+            </label>
+
+            {error ? <div className="rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-[13px] text-red-200">{error}</div> : null}
+            {notice ? <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-[13px] text-emerald-200">{notice}</div> : null}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-white px-4 text-[14px] font-semibold text-black transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {loading ? "Working..." : mode === "signin" ? "Sign in" : "Create account"}
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          </form>
+
+          <p className="mt-5 text-[13px] leading-6 text-white/40">
+            Starter credits are attached to the first login, and everything stays in the same dashboard after that.
+          </p>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function InfoChip({ icon, title, text }: { icon: ReactNode; title: string; text: string; }) {
+  return (
+    <div className="rounded-[22px] border border-white/10 bg-black/30 p-4">
+      <div className="flex items-center gap-2 text-white">
+        {icon}
+        <span className="text-[13px] font-medium">{title}</span>
+      </div>
+      <p className="mt-2 text-[13px] leading-6 text-white/50">{text}</p>
+    </div>
+  );
+}
+
+function PreviewCard({ title, text }: { title: string; text: string; }) {
+  return (
+    <div className="rounded-[20px] border border-white/10 bg-white/5 p-4">
+      <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-white/35">{title}</p>
+      <p className="mt-2 text-[14px] text-white/75">{text}</p>
+    </div>
+  );
+}
+
+
+
+================================================================================
+FILE: .\components\dashboard-shell.tsx
+================================================================================
+
+"use client";
+
+import type { ReactNode } from "react";
+
+export default function DashboardShell({
+  children
+}: {
+  children: ReactNode;
+}) {
+  return <>{children}</>;
+}
+
+
+
+================================================================================
+FILE: .\components\dashboard-view.tsx
+================================================================================
+
+"use client";
+
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+import type { DashboardSnapshot, DashboardKey, UsageLog } from "@/lib/dashboard";
+import { Activity, ArrowRight, Copy, KeyRound, Lock, RefreshCw, ShieldCheck, Sparkles, Trash2, Zap } from "lucide-react";
+
+type Props = { snapshot: DashboardSnapshot | null };
+
+type StoredKey = { id: string; name: string; key_prefix: string; raw_key: string; };
+
+const UTC_DATE_TIME = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "UTC",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: false
+});
+
+const UTC_MONTH_DAY = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "UTC",
+  month: "short",
+  day: "numeric"
+});
+
+function fmt(value?: string | null) {
+  if (!value) return "—";
+  return UTC_DATE_TIME.format(new Date(value));
+}
+
+function getStoredKeys(): StoredKey[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.sessionStorage.getItem("soloise.savedKeys");
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as StoredKey[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistStoredKey(key: StoredKey) {
+  if (typeof window === "undefined") return;
+  const current = getStoredKeys();
+  const next = [key, ...current.filter((item) => item.id !== key.id)].slice(0, 20);
+  window.sessionStorage.setItem("soloise.savedKeys", JSON.stringify(next));
+}
+
+function collectPoints(values: number[], width = 320, height = 96) {
+  if (values.length === 0) return "";
+  const max = Math.max(...values, 1);
+  const min = Math.min(...values, 0);
+  const span = Math.max(max - min, 1);
+  return values
+    .map((value, index) => {
+      const x = values.length === 1 ? width / 2 : (index / (values.length - 1)) * width;
+      const y = height - ((value - min) / span) * (height - 12) - 6;
+      return `${x},${y}`;
+    })
+    .join(" ");
+}
+
+function formatShortDate(value: string) {
+  return UTC_MONTH_DAY.format(new Date(value));
+}
+
+function StatTile({
+  label,
+  value,
+  hint,
+  accent = false,
+  muted = false
+}: {
+  label: string;
+  value: string | number;
+  hint?: string;
+  accent?: boolean;
+  muted?: boolean;
+}) {
+  return (
+    <div className={`min-w-0 rounded-[24px] border ${accent ? "border-cyan-300/20 bg-cyan-300/10" : "border-white/10 bg-white/5"} p-5 backdrop-blur-xl`}>
+      <p className="text-[12px] uppercase tracking-[0.18em] text-white/40">{label}</p>
+      <p className={`mt-3 break-words text-3xl font-semibold tracking-tight ${muted ? "text-white/55" : "text-white"}`}>{value}</p>
+      {hint ? <p className="mt-2 text-[13px] leading-6 text-white/45">{hint}</p> : null}
+    </div>
+  );
+}
+
+function SectionCard({
+  title,
+  subtitle,
+  children,
+  className = ""
+}: {
+  title: string;
+  subtitle?: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <section className={`min-w-0 overflow-hidden rounded-[28px] border border-white/10 bg-white/5 p-5 shadow-soft backdrop-blur-xl sm:p-6 ${className}`}>
+      <div className="mb-5">
+        <h2 className="text-[18px] font-semibold tracking-tight text-white">{title}</h2>
+        {subtitle ? <p className="mt-1 text-[13px] leading-6 text-white/50">{subtitle}</p> : null}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function EmptyState({ title, text, action }: { title: string; text: string; action?: ReactNode; }) {
+  return (
+    <div className="min-w-0 overflow-hidden rounded-[24px] border border-dashed border-white/[0.12] bg-black/25 p-6 text-center">
+      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white/70">
+        <Lock className="h-5 w-5" />
+      </div>
+      <p className="mt-4 text-[16px] font-medium text-white">{title}</p>
+      <p className="mt-2 text-[13px] leading-6 text-white/45">{text}</p>
+      {action ? <div className="mt-5">{action}</div> : null}
+    </div>
+  );
+}
+
+export default function DashboardView({ snapshot }: Props) {
+  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
+  const authed = Boolean(snapshot);
+  const [selectedKeyId, setSelectedKeyId] = useState<string>(snapshot?.keys[0]?.id ?? "");
+  const [keys, setKeys] = useState<DashboardKey[]>(snapshot?.keys ?? []);
+  const [recentCalls, setRecentCalls] = useState<UsageLog[]>(snapshot?.recentCalls ?? []);
+  const [credits, setCredits] = useState<number>(snapshot?.credits ?? 0);
+  const [creating, setCreating] = useState(false);
+  const [loadingKeys, setLoadingKeys] = useState(false);
+  const [revoking, setRevoking] = useState<string | null>(null);
+  const [name, setName] = useState("");
+  const [copied, setCopied] = useState(false);
+  const [rawKeyReveal, setRawKeyReveal] = useState<StoredKey | null>(null);
+  const [storedKeys, setStoredKeys] = useState<StoredKey[]>([]);
+  const [copiedSnippet, setCopiedSnippet] = useState(false);
+
+  useEffect(() => {
+    if (!authed) return;
+    if (!selectedKeyId && keys[0]) setSelectedKeyId(keys[0].id);
+  }, [authed, keys, selectedKeyId]);
+
+  useEffect(() => {
+    if (snapshot) {
+      setKeys(snapshot.keys);
+      setRecentCalls(snapshot.recentCalls);
+      setCredits(snapshot.credits);
+      setSelectedKeyId(snapshot.keys[0]?.id ?? "");
+    }
+  }, [snapshot]);
+
+  useEffect(() => {
+    setStoredKeys(getStoredKeys());
+  }, []);
+
+  const selectedKey = keys.find((key) => key.id === selectedKeyId) ?? keys[0] ?? null;
+  const selectedKeyRecentCalls = useMemo(() => {
+    if (selectedKey?.id) {
+      const filtered = recentCalls.filter((call) => call.key_id === selectedKey.id);
+      return filtered.length > 0 ? filtered : recentCalls;
+    }
+    return recentCalls;
+  }, [recentCalls, selectedKey?.id]);
+
+  const selectedStoredKey = useMemo(() => {
+    if (!selectedKey?.id) return null;
+    if (rawKeyReveal?.id === selectedKey.id) return rawKeyReveal;
+    const stored = storedKeys.find((key) => key.id === selectedKey.id);
+    return stored ?? null;
+  }, [rawKeyReveal, selectedKey?.id, storedKeys]);
+
+  const usageSeries = useMemo(() => {
+    const points = selectedKeyRecentCalls
+      .slice()
+      .reverse()
+      .map((call, index) => {
+        const successBonus = call.success ? 1 : 0;
+        return (call.latency_ms ?? 0) / 10 + successBonus * 8 + index;
+      });
+    return points.length > 0 ? points : [0, 0, 0, 0, 0];
+  }, [selectedKeyRecentCalls]);
+
+  const selectedSuccessRate = useMemo(() => {
+    if (selectedKeyRecentCalls.length === 0) return 0;
+    const ok = selectedKeyRecentCalls.filter((call) => call.success).length;
+    return Math.round((ok / selectedKeyRecentCalls.length) * 100);
+  }, [selectedKeyRecentCalls]);
+
+  const averageLatency = useMemo(() => {
+    if (selectedKeyRecentCalls.length === 0) return null;
+    const values = selectedKeyRecentCalls.map((call) => call.latency_ms).filter((v): v is number => typeof v === "number");
+    if (values.length === 0) return null;
+    return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
+  }, [selectedKeyRecentCalls]);
+
+  async function getSessionToken() {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token ?? null;
+  }
+
+  async function refreshKeys() {
+    const token = await getSessionToken();
+    setLoadingKeys(true);
+    try {
+      const response = await fetch("/api/keys", { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      const data = await response.json().catch(() => null);
+      if (response.ok && Array.isArray(data)) {
+        setKeys(data);
+        if (!selectedKeyId && data[0]) setSelectedKeyId(data[0].id);
+      }
+    } finally {
+      setLoadingKeys(false);
+    }
+  }
+
+  async function createKey() {
+    if (!name.trim()) return;
+    setCreating(true);
+    try {
+      const token = await getSessionToken();
+      const response = await fetch("/api/keys", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ name })
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) return;
+      if (data?.api_key) {
+        setKeys((current) => [data.api_key, ...current]);
+        setSelectedKeyId(data.api_key.id);
+      }
+      if (data?.key && data?.api_key) {
+        const stored = {
+          id: data.api_key.id,
+          name: data.api_key.name,
+          key_prefix: data.api_key.key_prefix,
+          raw_key: data.key
+        };
+        persistStoredKey(stored);
+        setRawKeyReveal(stored);
+        setCopied(false);
+      }
+      setName("");
+      await refreshKeys();
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  async function revokeKey(id: string) {
+    setRevoking(id);
+    try {
+      const token = await getSessionToken();
+      const response = await fetch(`/api/keys/${id}`, {
+        method: "DELETE",
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      const data = await response.json().catch(() => null);
+      if (response.ok) {
+        setKeys((current) => current.map((key) => key.id === id ? { ...key, is_active: false } : key));
+      } else if (data?.error) {
+        console.error(data.error);
+      }
+    } finally {
+      setRevoking(null);
+    }
+  }
+
+  async function copyRawKey() {
+    const raw = selectedStoredKey?.raw_key;
+    if (!raw) return;
+    await navigator.clipboard.writeText(raw);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1400);
+  }
+
+  async function copySnippet() {
+    const keyValue = selectedStoredKey?.raw_key || selectedKey?.key_prefix || "sk-sol-••••••••••••";
+    const snippet = `curl -X POST /api/recommend \
+  -H "Authorization: Bearer ${keyValue}" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "help users convert faster", "top_n": 3}'`;
+    await navigator.clipboard.writeText(snippet);
+    setCopiedSnippet(true);
+    window.setTimeout(() => setCopiedSnippet(false), 1400);
+  }
+
+  const totalShown = selectedKeyRecentCalls.length;
+  const lowCredits = credits < 50;
+
+  if (!authed) {
+    return (
+      <main className="mx-auto w-full max-w-[1400px] overflow-x-clip px-4 pb-10 sm:px-6 lg:px-8">
+        <section className="overflow-hidden rounded-[32px] border border-white/10 bg-white/5 p-5 shadow-soft backdrop-blur-xl sm:p-7">
+          <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-3">
+              <div className="inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1 text-[12px] text-amber-100 w-fit">
+                <Lock className="h-3.5 w-3.5" />
+                Locked until sign-in
+              </div>
+              <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+                A single premium dashboard for keys, credits, and analytics.
+              </h1>
+              <p className="max-w-3xl text-[15px] leading-7 text-white/55">
+                Open the dashboard, but API key creation stays disabled until you authenticate. After first login, your starter credits are attached automatically and the same page unlocks your key management flow.
+              </p>
+            </div>
+
+            <div className="grid gap-4 xl:grid-cols-4">
+              <StatTile label="Credits" value="—" hint="Unlock after sign-in" muted />
+              <StatTile label="API keys" value="—" hint="Create one after auth" muted />
+              <StatTile label="Calls" value="—" hint="Analytics will appear here" muted />
+              <StatTile label="Latency" value="—" hint="Selected key metrics" muted />
+            </div>
+
+            <div className="grid min-w-0 gap-5 lg:grid-cols-[1.05fr_0.95fr]">
+              <SectionCard title="Create API key" subtitle="Disabled until authenticated">
+                <EmptyState
+                  title="Sign in to create keys"
+                  text="Your dashboard is visible, but this control stays locked until you log in."
+                  action={<Link href="/auth" className="inline-flex h-11 items-center justify-center rounded-2xl bg-white px-4 text-[14px] font-semibold text-black">Go to sign in</Link>}
+                />
+              </SectionCard>
+
+              <SectionCard title="Analytics" subtitle="Selected-key analytics appear here once you are in">
+                <div className="space-y-4">
+                  <div className="rounded-[24px] border border-white/10 bg-black/30 p-5">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[13px] text-white/50">Usage preview</p>
+                      <span className="rounded-full border border-white/10 px-2 py-1 text-[11px] text-white/55">Locked</span>
+                    </div>
+                    <div className="mt-4 h-[160px] rounded-[20px] border border-dashed border-white/[0.12] bg-black/25" />
+                  </div>
+                  <div className="rounded-[24px] border border-white/10 bg-black/30 p-5">
+                    <p className="text-[13px] text-white/50">Recent calls</p>
+                    <div className="mt-4 rounded-[18px] border border-dashed border-white/[0.12] bg-black/25 p-6 text-[13px] text-white/45">
+                      No usage data available until you log in and create your first key.
+                    </div>
+                  </div>
+                </div>
+              </SectionCard>
+            </div>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  return (
+    <main className="mx-auto w-full max-w-[1400px] overflow-x-clip px-4 pb-10 sm:px-6 lg:px-8">
+      <section className="overflow-hidden rounded-[32px] border border-white/10 bg-white/5 p-5 shadow-soft backdrop-blur-xl sm:p-7">
+        <div className="flex flex-col gap-5">
+          <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-[12px] text-cyan-100 w-fit">
+                <Sparkles className="h-3.5 w-3.5" />
+                Authenticated dashboard
+              </div>
+              <h1 className="mt-4 text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+                Command center for your API.
+              </h1>
+              <p className="mt-3 max-w-3xl text-[15px] leading-7 text-white/55">
+                Create a key, copy it once, and keep the analytics on this page. No extra sections, no navigation sprawl, no overflow.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-3 min-w-0">
+              <StatTile label="Credits" value={credits} hint={lowCredits ? "Low balance" : "Ready to run"} accent={lowCredits} />
+              <StatTile label="API keys" value={keys.filter((key) => key.is_active).length} hint="Active keys" />
+            </div>
+          </div>
+
+          <div className="grid min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <StatTile label="Total calls" value={snapshot?.totalCalls ?? 0} hint="All-time usage" />
+            <StatTile label="Selected key calls" value={totalShown} hint="Recent calls visible" />
+            <StatTile label="Success rate" value={`${selectedSuccessRate}%`} hint="On recent sample" accent />
+            <StatTile label="Avg latency" value={averageLatency == null ? "—" : `${averageLatency} ms`} hint="Recent sample" />
+          </div>
+
+          <div className="grid min-w-0 gap-5 lg:grid-cols-[1.05fr_0.95fr]">
+            <SectionCard title="Create API key" subtitle="Keys are created from this page only">
+              <div className="space-y-4">
+                <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+                  <input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Key name"
+                    className="h-12 w-full rounded-2xl border border-white/10 bg-black/40 px-4 text-[14px] text-white outline-none placeholder:text-white/30 focus:border-cyan-300/40"
+                  />
+                  <button
+                    type="button"
+                    onClick={createKey}
+                    disabled={creating || !name.trim()}
+                    className="inline-flex h-12 min-w-0 items-center justify-center gap-2 rounded-2xl bg-white px-4 text-[14px] font-semibold text-black transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {creating ? <RefreshCw className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
+                    Create key
+                  </button>
+                </div>
+
+                {rawKeyReveal ? (
+                  <div className="rounded-[26px] border border-amber-300/20 bg-amber-300/10 p-4">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                      <div>
+                        <p className="text-[13px] font-medium text-amber-100">Copy now. This full key is shown only once.</p>
+                        <code className="mt-3 block break-all rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-[13px] leading-6 text-white">
+                          {rawKeyReveal.raw_key}
+                        </code>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={copyRawKey}
+                        className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 text-[13px] font-medium text-white transition hover:bg-white/10"
+                      >
+                        <Copy className="h-4 w-4" />
+                        {copied ? "Copied" : "Copy key"}
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+
+                {selectedStoredKey ? (
+                  <div className="rounded-[26px] border border-cyan-300/[0.15] bg-cyan-300/10 p-4">
+                    <p className="text-[13px] font-medium text-cyan-100">Selected key preview</p>
+                    <p className="mt-2 text-[14px] text-white/75">
+                      {selectedStoredKey.name} · {selectedStoredKey.key_prefix}
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+            </SectionCard>
+
+            <SectionCard title="Selected key analytics" subtitle="Switch the key and the analytics update on this page">
+              <div className="space-y-4">
+                <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+                  <div className="rounded-[22px] border border-white/10 bg-black/35 p-4">
+                    <label className="block text-[12px] uppercase tracking-[0.18em] text-white/35">Active key</label>
+                    <select
+                      value={selectedKeyId}
+                      onChange={(e) => setSelectedKeyId(e.target.value)}
+                      className="mt-2 h-11 w-full rounded-2xl border border-white/10 bg-black/40 px-4 text-[14px] text-white outline-none"
+                    >
+                      {keys.length === 0 ? <option value="">No keys yet</option> : null}
+                      {keys.map((key) => (
+                        <option key={key.id} value={key.id} className="bg-black">
+                          {key.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="rounded-[22px] border border-white/10 bg-black/35 p-4">
+                    <p className="text-[12px] uppercase tracking-[0.18em] text-white/35">Status</p>
+                    <div className="mt-2 flex items-center gap-2 text-[14px] text-white">
+                      <ShieldCheck className="h-4 w-4 text-emerald-300" />
+                      {selectedKey?.is_active ? "Active" : "Revoked"}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="min-w-0 rounded-[24px] border border-white/10 bg-black/35 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-[13px] text-white/45">Recent activity</p>
+                      <p className="mt-1 text-[18px] font-semibold text-white">{selectedKey?.name ?? "No key selected"}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={copySnippet}
+                      className="inline-flex h-10 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 text-[13px] font-medium text-white transition hover:bg-white/10"
+                    >
+                      <Copy className="h-4 w-4" />
+                      {copiedSnippet ? "Copied" : "Copy snippet"}
+                    </button>
+                  </div>
+
+                  <div className="mt-5 overflow-hidden rounded-[22px] border border-white/10 bg-black/45 p-4">
+                    <svg viewBox="0 0 320 96" className="h-[96px] w-full">
+                      <defs>
+                        <linearGradient id="line-gradient" x1="0" y1="0" x2="1" y2="0">
+                          <stop offset="0%" stopColor="rgba(34,211,238,0.95)" />
+                          <stop offset="100%" stopColor="rgba(16,185,129,0.95)" />
+                        </linearGradient>
+                      </defs>
+                      <polyline
+                        points={collectPoints(usageSeries, 320, 96)}
+                        fill="none"
+                        stroke="url(#line-gradient)"
+                        strokeWidth="2.5"
+                        strokeLinejoin="round"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    <MiniMetric label="Shown calls" value={totalShown} />
+                    <MiniMetric label="Success" value={`${selectedSuccessRate}%`} />
+                    <MiniMetric label="Latency" value={averageLatency == null ? "—" : `${averageLatency} ms`} />
+                    <MiniMetric label="Last call" value={fmt(selectedKeyRecentCalls[0]?.created_at)} />
+                  </div>
+                </div>
+              </div>
+            </SectionCard>
+          </div>
+
+          <div className="grid gap-5 xl:grid-cols-[1fr_0.95fr]">
+            <SectionCard title="API keys" subtitle="Manage keys without leaving this page">
+              <div className="space-y-3">
+                {loadingKeys ? (
+                  <div className="rounded-[22px] border border-white/10 bg-black/25 p-5 text-[13px] text-white/45">Refreshing keys…</div>
+                ) : null}
+
+                {keys.length === 0 ? (
+                  <EmptyState
+                    title="No API keys yet"
+                    text="Create your first key from the panel above to unlock usage analytics and the one-time copy flow."
+                  />
+                ) : (
+                  <div className="space-y-3">
+                    {keys.map((key) => {
+                      const active = key.is_active;
+                      const selected = key.id === selectedKeyId;
+                      return (
+                        <div
+                          key={key.id}
+                          className={`rounded-[24px] border p-4 transition ${selected ? "border-cyan-300/20 bg-cyan-300/10" : "border-white/10 bg-black/25"}`}
+                        >
+                          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="truncate text-[15px] font-medium text-white">{key.name}</p>
+                                <span className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${active ? "bg-emerald-400/10 text-emerald-200" : "bg-red-400/10 text-red-200"}`}>
+                                  {active ? "Active" : "Revoked"}
+                                </span>
+                              </div>
+                              <p className="mt-1 text-[13px] text-white/45">Prefix: {key.key_prefix ?? "—"} · Created {fmt(key.created_at)}</p>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedKeyId(key.id)}
+                                className="inline-flex h-10 items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-4 text-[13px] font-medium text-white transition hover:bg-white/10"
+                              >
+                                View analytics
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => revokeKey(key.id)}
+                                disabled={!active || revoking === key.id}
+                                className="inline-flex h-10 items-center justify-center gap-2 rounded-2xl border border-red-400/[0.15] bg-red-500/10 px-4 text-[13px] font-medium text-red-100 transition hover:bg-red-500/[0.15] disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                {revoking === key.id ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                Revoke
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </SectionCard>
+
+            <SectionCard title="Recent API calls" subtitle="This sample is drawn from the latest usage logs">
+              {selectedKeyRecentCalls.length > 0 ? (
+                <div className="overflow-hidden rounded-[24px] border border-white/10 bg-black/25">
+                  <div className="max-h-[440px] overflow-auto">
+                    <table className="min-w-[720px] w-full border-collapse">
+                      <thead className="sticky top-0 z-10 bg-black/90 backdrop-blur">
+                        <tr className="text-left text-[11px] uppercase tracking-[0.18em] text-white/35">
+                          <th className="px-4 py-3 font-medium">Time</th>
+                          <th className="px-4 py-3 font-medium">Key</th>
+                          <th className="px-4 py-3 font-medium">Query</th>
+                          <th className="px-4 py-3 font-medium">Top_n</th>
+                          <th className="px-4 py-3 font-medium">Latency</th>
+                          <th className="px-4 py-3 font-medium">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedKeyRecentCalls.map((call, index) => (
+                          <tr key={call.id} className={index % 2 === 0 ? "bg-white/[0.02]" : "bg-transparent"}>
+                            <td className="px-4 py-3 text-[13px] text-white/55">{fmt(call.created_at)}</td>
+                            <td className="px-4 py-3 text-[13px] text-white/80">
+                              {call.key_id ? keys.find((key) => key.id === call.key_id)?.name ?? call.key_id : "—"}
+                            </td>
+                            <td className="px-4 py-3 text-[13px] text-white/70">{call.query_length ?? "—"}</td>
+                            <td className="px-4 py-3 text-[13px] text-white/70">{call.top_n ?? "—"}</td>
+                            <td className="px-4 py-3 text-[13px] text-white/70">{call.latency_ms == null ? "—" : `${call.latency_ms} ms`}</td>
+                            <td className="px-4 py-3">
+                              <span className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-[11px] font-medium ${call.success ? "bg-emerald-400/10 text-emerald-200" : "bg-red-400/10 text-red-200"}`}>
+                                <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                                {call.success ? "Success" : "Error"}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : (
+                <EmptyState
+                  title="No usage yet"
+                  text="Once your backend receives traffic, the latest calls will appear here with latency and status."
+                />
+              )}
+            </SectionCard>
+          </div>
+
+          <section className="grid min-w-0 gap-5 lg:grid-cols-[0.9fr_1.1fr]">
+            <SectionCard
+              title="Quick start"
+              subtitle="Copy a snippet and call the recommend endpoint"
+            >
+              <div className="space-y-4">
+                <div className="min-w-0 rounded-[24px] border border-white/10 bg-black/35 p-4">
+                  <p className="text-[12px] uppercase tracking-[0.18em] text-white/35">Authorization header</p>
+                  <code className="mt-3 block break-all rounded-2xl border border-white/10 bg-black/45 px-4 py-3 text-[13px] text-white/80">
+                    Authorization: Bearer {selectedStoredKey?.raw_key ?? selectedKey?.key_prefix ?? "sk-sol-••••••••••••"}
+                  </code>
+                </div>
+                <div className="min-w-0 rounded-[24px] border border-white/10 bg-black/35 p-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[12px] uppercase tracking-[0.18em] text-white/35">Example</p>
+                    <button
+                      type="button"
+                      onClick={copySnippet}
+                      className="inline-flex h-9 items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-3 text-[12px] font-medium text-white transition hover:bg-white/10"
+                    >
+                      {copiedSnippet ? "Copied" : "Copy"}
+                    </button>
+                  </div>
+                  <pre className="mt-3 overflow-x-auto rounded-2xl border border-white/10 bg-black/45 p-4 text-[13px] leading-6 text-white/80">
+                    <code>{`curl -X POST /api/recommend \
+  -H "Authorization: Bearer ${selectedStoredKey?.raw_key ?? selectedKey?.key_prefix ?? "sk-sol-••••••••••••"}" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "reduce signup drop-off", "top_n": 3}'`}</code>
+                  </pre>
+                </div>
+              </div>
+            </SectionCard>
+
+            <SectionCard title="Account status" subtitle="Everything stays on one page">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <StatusPill icon={<Activity className="h-4 w-4" />} label="Credits" value={credits.toString()} />
+                <StatusPill icon={<Zap className="h-4 w-4" />} label="Active keys" value={keys.filter((key) => key.is_active).length.toString()} />
+                <StatusPill icon={<ShieldCheck className="h-4 w-4" />} label="Selected key" value={selectedKey?.name ?? "—"} wide />
+                <StatusPill icon={<ArrowRight className="h-4 w-4" />} label="Manage" value="Inline actions only" wide />
+              </div>
+              {lowCredits ? (
+                <div className="mt-4 rounded-[24px] border border-amber-300/20 bg-amber-300/10 p-4 text-[13px] text-amber-100">
+                  Credits are running low. Top up before the balance reaches zero.
+                </div>
+              ) : null}
+            </SectionCard>
+          </section>
+        </div>
+      </section>
+    </main>
+  );
+}
+
+function MiniMetric({ label, value }: { label: string; value: string | number; }) {
+  return (
+    <div className="min-w-0 rounded-[18px] border border-white/10 bg-black/35 p-3">
+      <p className="text-[11px] uppercase tracking-[0.18em] text-white/35">{label}</p>
+      <p className="mt-2 break-words text-[13px] font-medium text-white">{value}</p>
+    </div>
+  );
+}
+
+function StatusPill({ icon, label, value, wide = false }: { icon: ReactNode; label: string; value: string; wide?: boolean; }) {
+  return (
+    <div className={`min-w-0 rounded-[24px] border border-white/10 bg-black/35 p-4 ${wide ? "sm:col-span-2" : ""}`}>
+      <div className="flex items-center gap-2 text-white/70">
+        {icon}
+        <span className="text-[12px] uppercase tracking-[0.18em] text-white/35">{label}</span>
+      </div>
+      <p className="mt-3 break-words text-[14px] font-medium text-white">{value}</p>
+    </div>
+  );
+}
+
+
+
+================================================================================
+FILE: .\components\key-manager.tsx
+================================================================================
+
+"use client";
+
+// Kept for compatibility with old routes. The new single-page dashboard handles key management inline.
+export default function KeyManager() {
+  return null;
+}
+
+
+
+================================================================================
+FILE: .\components\playground-client.tsx
+================================================================================
+
+"use client";
+
+// Kept for compatibility with old routes. The new single-page dashboard handles the quick-start flow inline.
+export default function PlaygroundClient() {
+  return null;
+}
+
+
+
+================================================================================
+FILE: .\components\site-topbar.tsx
+================================================================================
+
+"use client";
+
+import Link from "next/link";
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { Sparkles, LogOut, ShieldCheck } from "lucide-react";
+
+type Props = { userEmail: string | null };
+
+export default function SiteTopbar({ userEmail }: Props) {
+  const router = useRouter();
+  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
+  const [signingOut, setSigningOut] = useState(false);
+  const authed = Boolean(userEmail);
+
+  async function signOut() {
+    setSigningOut(true);
+    await supabase.auth.signOut();
+    router.push("/auth");
+    router.refresh();
+    setSigningOut(false);
+  }
+
+  return (
+    <header className="fixed inset-x-0 top-0 z-50 h-[var(--topbar-h)] border-b border-white/10 bg-black/[0.72] backdrop-blur-xl">
+      <div className="mx-auto flex h-full max-w-[1400px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+        <Link href="/" className="inline-flex items-center gap-3">
+          <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 shadow-soft">
+            <Sparkles className="h-4 w-4 text-cyan-300" />
+          </span>
+          <span className="flex flex-col leading-tight">
+            <span className="text-[15px] font-semibold tracking-[0.12em] text-white uppercase">Soloise</span>
+            <span className="text-[11px] text-white/45">Behavioral Intelligence API</span>
+          </span>
+        </Link>
+
+        <div className="flex items-center gap-3">
+          {authed ? (
+            <>
+              <span className="hidden items-center gap-2 rounded-full border border-emerald-400/[0.25] bg-emerald-400/10 px-3 py-1.5 text-[12px] text-emerald-200 md:inline-flex">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                <span className="max-w-[180px] truncate">{userEmail}</span>
+              </span>
+              <button
+                type="button"
+                onClick={signOut}
+                disabled={signingOut}
+                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-[13px] font-medium text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                {signingOut ? "Signing out" : "Sign out"}
+              </button>
+            </>
+          ) : (
+            <Link
+              href="/auth"
+              className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-4 py-2 text-[13px] font-medium text-cyan-100 transition hover:bg-cyan-300/[0.15]"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              Sign in
+            </Link>
+          )}
+        </div>
+      </div>
+    </header>
+  );
+}
+
+
+
+================================================================================
+FILE: .\lib\dashboard.ts
+================================================================================
+
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+
+export type DashboardKey = {
+  id: string;
+  name: string;
+  key_prefix: string | null;
+  is_active: boolean;
+  created_at: string;
+};
+
+export type UsageLog = {
+  id: string;
+  key_id: string | null;
+  query_length: number | null;
+  top_n: number | null;
+  latency_ms: number | null;
+  success: boolean | null;
+  created_at: string;
+};
+
+export type DashboardSnapshot = {
+  user: {
+    id: string;
+    email: string;
+  };
+  credits: number;
+  keyCount: number;
+  totalCalls: number;
+  latestLatencyMs: number | null;
+  keys: DashboardKey[];
+  recentCalls: UsageLog[];
+};
+
+export async function getDashboardSnapshot(): Promise<DashboardSnapshot | null> {
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) return null;
+
+  const admin = createSupabaseAdminClient();
+
+  const [balanceRes, keysRes, countRes, latestRes, recentRes] = await Promise.all([
+    admin.from("credit_balances").select("credits").eq("user_id", user.id).maybeSingle(),
+    admin.from("api_keys").select("id,name,key_prefix,is_active,created_at").eq("user_id", user.id).order("created_at", { ascending: false }),
+    admin.from("usage_logs").select("id", { count: "exact", head: true }).eq("user_id", user.id),
+    admin.from("usage_logs").select("latency_ms").eq("user_id", user.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+    admin.from("usage_logs").select("id,key_id,query_length,top_n,latency_ms,success,created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(10)
+  ]);
+
+  return {
+    user: { id: user.id, email: user.email ?? "" },
+    credits: balanceRes.data?.credits ?? 0,
+    keyCount: keysRes.data?.length ?? 0,
+    totalCalls: countRes.count ?? 0,
+    latestLatencyMs: latestRes.data?.latency_ms ?? null,
+    keys: (keysRes.data ?? []) as DashboardKey[],
+    recentCalls: (recentRes.data ?? []) as UsageLog[]
+  };
+}
+
+
+
+================================================================================
+FILE: .\lib\supabase\admin.ts
+================================================================================
+
+import { createClient } from "@supabase/supabase-js";
+
+export function createSupabaseAdminClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !serviceRoleKey) {
+    throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.");
+  }
+
+  return createClient(url, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  });
+}
+
+
+
+================================================================================
+FILE: .\lib\supabase\browser.ts
+================================================================================
+
+import { createBrowserClient } from "@supabase/ssr";
+
+export function createSupabaseBrowserClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!url || !anonKey) {
+    throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY.");
+  }
+
+  return createBrowserClient(url, anonKey);
+}
+
+
+
+================================================================================
+FILE: .\lib\supabase\server.ts
+================================================================================
+
+import { cookies } from "next/headers";
+import { createServerClient } from "@supabase/ssr";
+
+export async function createSupabaseServerClient() {
+  const cookieStore = await cookies();
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!url || !anonKey) {
+    throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY.");
+  }
+
+  return createServerClient(url, anonKey, {
+    cookies: {
+      getAll() {
+        return cookieStore.getAll();
+      },
+      setAll() {
+        // Read-only in server components. Middleware persists refreshed cookies.
+      }
+    }
+  });
+}
+
+
+
