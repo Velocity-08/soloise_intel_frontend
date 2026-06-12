@@ -5,7 +5,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
-type CookieToSet = { name: string; value: string; options: any; };
+type CookieToSet = { name: string; value: string; options: any };
 type RouteContext = { params: Promise<{ id: string }> };
 
 function buildSupabaseClient(request: NextRequest, cookiesToSet: CookieToSet[]) {
@@ -16,7 +16,7 @@ function buildSupabaseClient(request: NextRequest, cookiesToSet: CookieToSet[]) 
   return createServerClient(url, anonKey, {
     cookies: {
       getAll() { return request.cookies.getAll(); },
-      setAll(cookies) { cookiesToSet.push(...(cookies as CookieToSet[])); }
+      setAll(cookies: CookieToSet[]) { cookiesToSet.push(...cookies); }
     }
   });
 }
