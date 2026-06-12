@@ -1,4 +1,3 @@
-
 import { createHash, randomBytes } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
@@ -17,7 +16,7 @@ function buildSupabaseClient(request: NextRequest, cookiesToSet: CookieToSet[]) 
   return createServerClient(url, anonKey, {
     cookies: {
       getAll() { return request.cookies.getAll(); },
-      setAll(cookies) { cookiesToSet.push(...(cookies as CookieToSet[])); }
+      setAll(cookies: CookieToSet[]) { cookiesToSet.push(...cookies); }
     }
   });
 }
@@ -96,4 +95,3 @@ export async function POST(request: NextRequest) {
   applyCookies(response, cookiesToSet);
   return response;
 }
-
