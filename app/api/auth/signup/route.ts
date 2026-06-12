@@ -1,10 +1,11 @@
-
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { getSupabaseAnonKey, getSupabaseUrl } from "@/lib/supabase/env";
 
+type CookieToSet = { name: string; value: string; options: any };
+
 export async function POST(request: NextRequest) {
-  const cookiesToSet: { name: string; value: string; options: any }[] = [];
+  const cookiesToSet: CookieToSet[] = [];
   const url = getSupabaseUrl();
   const anonKey = getSupabaseAnonKey();
 
@@ -17,8 +18,8 @@ export async function POST(request: NextRequest) {
       getAll() {
         return request.cookies.getAll();
       },
-      setAll(cookies) {
-        cookiesToSet.push(...(cookies as any[]));
+      setAll(cookies: CookieToSet[]) {
+        cookiesToSet.push(...cookies);
       }
     }
   });
@@ -51,4 +52,3 @@ export async function POST(request: NextRequest) {
   cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
   return response;
 }
-
