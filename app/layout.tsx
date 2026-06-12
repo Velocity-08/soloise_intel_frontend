@@ -1,3 +1,4 @@
+
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import SiteTopbar from "@/components/site-topbar";
@@ -17,9 +18,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Soloise — Behavioral Intelligence API",
-  description: "A single-premium dashboard for auth, API keys, and usage analytics.",
-  viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=yes",
-  themeColor: "#000000",
+  description: "A single-premium dashboard for auth, API keys, and usage analytics."
 };
 
 async function getUserEmail() {
@@ -39,7 +38,7 @@ export default async function RootLayout({
 
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
-      <body className="antialiased">
+      <body>
         <SiteTopbar userEmail={userEmail} />
         <div style={{ paddingTop: "var(--topbar-h, 68px)" }}>
           {children}
@@ -48,3 +47,4 @@ export default async function RootLayout({
     </html>
   );
 }
+

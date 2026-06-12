@@ -1,6 +1,8 @@
+
 import { createHash, randomBytes } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { getSupabaseAnonKey, getSupabaseUrl } from "@/lib/supabase/env";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -8,8 +10,8 @@ export const dynamic = "force-dynamic";
 type CookieToSet = { name: string; value: string; options: any; };
 
 function buildSupabaseClient(request: NextRequest, cookiesToSet: CookieToSet[]) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const url = getSupabaseUrl();
+  const anonKey = getSupabaseAnonKey();
   if (!url || !anonKey) throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY.");
 
   return createServerClient(url, anonKey, {
@@ -94,3 +96,4 @@ export async function POST(request: NextRequest) {
   applyCookies(response, cookiesToSet);
   return response;
 }
+

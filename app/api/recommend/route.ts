@@ -1,3 +1,4 @@
+
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -34,3 +35,4 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: error?.message || "Upstream unavailable.", code: "UPSTREAM_ERROR" }, { status: 502 });
   }
 }
+

@@ -1,31 +1,19 @@
-# Soloise Frontend Redesign
+# Soloise Frontend
 
-A single-page dark dashboard built on the existing Supabase auth / key / analytics system.
+## Run locally
 
-## What stayed the same
-- Supabase auth flow
-- `/api/auth/signin`
-- `/api/auth/signup`
-- `/api/keys`
-- `/api/keys/[id]`
-- `/api/recommend`
-- `getDashboardSnapshot()` and the current database tables
+1. Copy `.env.example` to `.env.local`
+2. Fill in your Supabase keys
+3. Install dependencies
+4. Run `npm run dev`
 
-## What changed
-- one main dashboard surface
-- dark futuristic layout
-- no separate docs/keys/playground navigation in the UI
-- API key creation is embedded directly in the dashboard
-- analytics stay on the same page
+## Login note
 
-## Run
-```bash
-npm install
-npm run dev
-```
+If Supabase auth fails with `Invalid API key`, the local environment is usually missing the Supabase values or using the wrong variable names. This project now accepts both:
 
-## Required environment variables
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_URL` / `SUPABASE_ANON_KEY`
+
+For the admin client it accepts:
+
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `SOLIOSE_BACKEND_URL` (optional, defaults to `http://localhost:8000`)

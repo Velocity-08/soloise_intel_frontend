@@ -1,3 +1,4 @@
+
 import { redirect } from "next/navigation";
 import AuthForm from "@/components/auth-form";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -18,3 +19,4 @@ export default async function AuthPage() {
     </main>
   );
 }
+
