@@ -5,7 +5,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
-type CookieToSet = { name: string; value: string; options: any };
+type CookieToSet = { name: string; value: string; options: any; };
 type RouteContext = { params: Promise<{ id: string }> };
 
 function buildSupabaseClient(request: NextRequest, cookiesToSet: CookieToSet[]) {
@@ -26,10 +26,10 @@ function applyCookies(response: NextResponse, cookiesToSet: CookieToSet[]) {
 }
 
 export async function DELETE(request: NextRequest, context: RouteContext) {
-  const { id } = await context.params;
   const cookiesToSet: CookieToSet[] = [];
   const supabase = buildSupabaseClient(request, cookiesToSet);
   const admin = createSupabaseAdminClient();
+  const { id } = await context.params;
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
@@ -56,3 +56,5 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
   applyCookies(response, cookiesToSet);
   return response;
 }
+
+

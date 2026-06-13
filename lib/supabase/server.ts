@@ -1,4 +1,3 @@
-
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { getSupabaseAnonKey, getSupabaseUrl } from "@/lib/supabase/env";
@@ -23,4 +22,6 @@ export async function createSupabaseServerClient() {
     }
   });
 }
+
+
 

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo, useState } from "react";
@@ -247,4 +246,5 @@ function PreviewCard({ title, text }: { title: string; text: string; }) {
     </div>
   );
 }
+
 

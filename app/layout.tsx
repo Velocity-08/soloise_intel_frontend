@@ -1,4 +1,3 @@
-
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import SiteTopbar from "@/components/site-topbar";
@@ -47,4 +46,5 @@ export default async function RootLayout({
     </html>
   );
 }
+
 

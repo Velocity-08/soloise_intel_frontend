@@ -25,18 +25,22 @@ export async function GET(request: NextRequest) {
 
   const response = NextResponse.redirect(new URL("/dashboard", url.origin));
 
-  const supabase = createServerClient(supabaseUrl, anonKey, {
-    cookies: {
-      getAll() {
-        return request.cookies.getAll();
-      },
-      setAll(cookiesToSet: CookieToSet[]) {
-        cookiesToSet.forEach(({ name, value, options }) => {
-          response.cookies.set(name, value, options);
-        });
+  const supabase = createServerClient(
+    supabaseUrl,
+    anonKey,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet: CookieToSet[]) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            response.cookies.set(name, value, options);
+          });
+        }
       }
     }
-  });
+  );
 
   const { error } = await supabase.auth.exchangeCodeForSession(code);
   if (error) {
@@ -52,3 +56,4 @@ export async function GET(request: NextRequest) {
 
   return response;
 }
+

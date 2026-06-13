@@ -17,3 +17,4 @@ If Supabase auth fails with `Invalid API key`, the local environment is usually 
 For the admin client it accepts:
 
 - `SUPABASE_SERVICE_ROLE_KEY`
+

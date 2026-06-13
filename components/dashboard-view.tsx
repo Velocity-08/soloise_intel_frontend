@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -695,4 +694,5 @@ function StatusPill({ icon, label, value, wide = false }: { icon: ReactNode; lab
     </div>
   );
 }
+
 

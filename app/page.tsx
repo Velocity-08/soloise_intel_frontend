@@ -1,4 +1,3 @@
-
 import { getDashboardSnapshot } from "@/lib/dashboard";
 import DashboardView from "@/components/dashboard-view";
 
@@ -8,4 +7,5 @@ export default async function DashboardPage() {
   const snapshot = await getDashboardSnapshot();
   return <DashboardView snapshot={snapshot} />;
 }
+
 
