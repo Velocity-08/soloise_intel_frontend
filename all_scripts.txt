@@ -7,8 +7,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { getSupabaseAnonKey, getSupabaseUrl } from "@/lib/supabase/env";
 
-type CookieToSet = { name: string; value: string; options: any };
-
 export async function middleware(request: NextRequest) {
   const url = getSupabaseUrl();
   const anonKey = getSupabaseAnonKey();
@@ -24,7 +22,7 @@ export async function middleware(request: NextRequest) {
       getAll() {
         return request.cookies.getAll();
       },
-      setAll(cookiesToSet: CookieToSet[]) {
+      setAll(cookiesToSet: { name: string; value: string; options: any }[]) {
         cookiesToSet.forEach(({ name, value, options }) => {
           response.cookies.set(name, value, options);
         });
@@ -2096,7 +2094,6 @@ export const metadata: Metadata = {
 async function getUserEmail() {
   try {
     const supabase = await createSupabaseServerClient();
-    if (!supabase) return null;
     const { data: { user } } = await supabase.auth.getUser();
     return user?.email ?? null;
   } catch {
@@ -2376,139 +2373,60 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
-type CookieToSet = {
-  name: string;
-  value: string;
-  options: any;
-};
+type CookieToSet = { name: string; value: string; options: any; };
+type RouteContext = { params: Promise<{ id: string }> };
 
-type RouteContext = {
-  params: Promise<{
-    id: string;
-  }>;
-};
-
-function buildSupabaseClient(
-  request: NextRequest,
-  cookiesToSet: CookieToSet[]
-) {
+function buildSupabaseClient(request: NextRequest, cookiesToSet: CookieToSet[]) {
   const url = getSupabaseUrl();
   const anonKey = getSupabaseAnonKey();
-
-  if (!url || !anonKey) {
-    throw new Error(
-      "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY."
-    );
-  }
+  if (!url || !anonKey) throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY.");
 
   return createServerClient(url, anonKey, {
     cookies: {
-      getAll() {
-        return request.cookies.getAll();
-      },
-      setAll(cookies: CookieToSet[]) {
-        cookiesToSet.push(...cookies);
-      },
-    },
+      getAll() { return request.cookies.getAll(); },
+      setAll(cookies: CookieToSet[]) { cookiesToSet.push(...cookies); }
+    }
   });
 }
 
-function applyCookies(
-  response: NextResponse,
-  cookiesToSet: CookieToSet[]
-) {
-  for (const cookie of cookiesToSet) {
-    response.cookies.set(
-      cookie.name,
-      cookie.value,
-      cookie.options
-    );
-  }
+function applyCookies(response: NextResponse, cookiesToSet: CookieToSet[]) {
+  for (const cookie of cookiesToSet) response.cookies.set(cookie.name, cookie.value, cookie.options);
 }
 
-export async function DELETE(
-  request: NextRequest,
-  context: RouteContext
-) {
+export async function DELETE(request: NextRequest, context: RouteContext) {
+  const cookiesToSet: CookieToSet[] = [];
+  const supabase = buildSupabaseClient(request, cookiesToSet);
+  const admin = createSupabaseAdminClient();
   const { id } = await context.params;
 
-  const cookiesToSet: CookieToSet[] = [];
-
-  const supabase = buildSupabaseClient(
-    request,
-    cookiesToSet
-  );
-
-  const admin = createSupabaseAdminClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
-    const response = NextResponse.json(
-      {
-        ok: false,
-        error: "Unauthorized.",
-      },
-      {
-        status: 401,
-      }
-    );
-
+    const response = NextResponse.json({ ok: false, error: "Unauthorized." }, { status: 401 });
     applyCookies(response, cookiesToSet);
     return response;
   }
 
-  const { data, error } = await admin
-    .from("api_keys")
-    .update({
-      is_active: false,
-    })
-    .eq("id", id)
-    .eq("user_id", user.id)
-    .select("id")
-    .maybeSingle();
+  const { data, error } = await admin.from("api_keys").update({ is_active: false }).eq("id", id).eq("user_id", user.id).select("id").maybeSingle();
 
   if (error) {
-    const response = NextResponse.json(
-      {
-        ok: false,
-        error: error.message,
-      },
-      {
-        status: 500,
-      }
-    );
-
+    const response = NextResponse.json({ ok: false, error: error.message }, { status: 500 });
     applyCookies(response, cookiesToSet);
     return response;
   }
 
   if (!data) {
-    const response = NextResponse.json(
-      {
-        ok: false,
-        error: "Key not found.",
-      },
-      {
-        status: 404,
-      }
-    );
-
+    const response = NextResponse.json({ ok: false, error: "Key not found." }, { status: 404 });
     applyCookies(response, cookiesToSet);
     return response;
   }
 
-  const response = NextResponse.json({
-    ok: true,
-    revoked: data.id,
-  });
-
+  const response = NextResponse.json({ ok: true, revoked: data.id });
   applyCookies(response, cookiesToSet);
-
   return response;
 }
+
+
+
 
 
 ====================================================================================================
@@ -2568,16 +2486,6 @@ export const dynamic = "force-dynamic";
 
 export default async function AuthPage() {
   const supabase = await createSupabaseServerClient();
-  if (!supabase) {
-    return (
-      <main className="min-h-[calc(100vh-68px)] px-6 py-10">
-        <div className="mx-auto flex min-h-[calc(100vh-120px)] max-w-6xl items-center justify-center">
-          <AuthForm />
-        </div>
-      </main>
-    );
-  }
-
   const { data: { user } } = await supabase.auth.getUser();
 
   if (user) redirect("/dashboard");
@@ -2786,11 +2694,6 @@ export default function AuthForm() {
   const [error, setError] = useState<string | null>(null);
 
   async function signInWithGoogle() {
-    if (!supabase) {
-      setError("Supabase is not configured.");
-      return;
-    }
-
     setLoading(true);
     setError(null);
     setNotice(null);
@@ -3234,7 +3137,6 @@ export default function DashboardView({ snapshot }: Props) {
   }, [selectedKeyRecentCalls]);
 
   async function getSessionToken() {
-    if (!supabase) return null;
     const { data: { session } } = await supabase.auth.getSession();
     return session?.access_token ?? null;
   }
@@ -3783,12 +3685,6 @@ export default function SiteTopbar({ userEmail }: Props) {
   const authed = Boolean(userEmail);
 
   async function signOut() {
-    if (!supabase) {
-      router.push("/auth");
-      router.refresh();
-      return;
-    }
-
     setSigningOut(true);
     await supabase.auth.signOut();
     router.push("/auth");
@@ -7817,7 +7713,6 @@ export type DashboardSnapshot = {
 
 export async function getDashboardSnapshot(): Promise<DashboardSnapshot | null> {
   const supabase = await createSupabaseServerClient();
-  if (!supabase) return null;
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) return null;
@@ -7886,7 +7781,7 @@ export function createSupabaseBrowserClient() {
   const anonKey = getSupabaseAnonKey();
 
   if (!url || !anonKey) {
-    return null;
+    throw new Error("Missing Supabase URL or anon key. Set NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY, or SUPABASE_URL / SUPABASE_ANON_KEY.");
   }
 
   return createBrowserClient(url, anonKey);
@@ -7946,7 +7841,7 @@ export async function createSupabaseServerClient() {
   const anonKey = getSupabaseAnonKey();
 
   if (!url || !anonKey) {
-    return null;
+    throw new Error("Missing Supabase URL or anon key. Set NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY, or SUPABASE_URL / SUPABASE_ANON_KEY.");
   }
 
   return createServerClient(url, anonKey, {
