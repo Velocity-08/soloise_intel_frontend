@@ -5,11 +5,28 @@ import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { DashboardSnapshot, DashboardKey, UsageLog } from "@/lib/dashboard";
-import { Activity, ArrowRight, Copy, KeyRound, Lock, RefreshCw, ShieldCheck, Sparkles, Trash2, Zap } from "lucide-react";
+import {
+  Activity,
+  ArrowRight,
+  Bot,
+  Copy,
+  KeyRound,
+  Lock,
+  RefreshCw,
+  ShieldCheck,
+  Sparkles,
+  Trash2,
+  Zap,
+} from "lucide-react";
 
 type Props = { snapshot: DashboardSnapshot | null };
 
-type StoredKey = { id: string; name: string; key_prefix: string; raw_key: string; };
+type StoredKey = {
+  id: string;
+  name: string;
+  key_prefix: string;
+  raw_key: string;
+};
 
 const UTC_DATE_TIME = new Intl.DateTimeFormat("en-GB", {
   timeZone: "UTC",
@@ -19,13 +36,13 @@ const UTC_DATE_TIME = new Intl.DateTimeFormat("en-GB", {
   hour: "2-digit",
   minute: "2-digit",
   second: "2-digit",
-  hour12: false
+  hour12: false,
 });
 
 const UTC_MONTH_DAY = new Intl.DateTimeFormat("en-GB", {
   timeZone: "UTC",
   month: "short",
-  day: "numeric"
+  day: "numeric",
 });
 
 function fmt(value?: string | null) {
@@ -75,7 +92,7 @@ function StatTile({
   value,
   hint,
   accent = false,
-  muted = false
+  muted = false,
 }: {
   label: string;
   value: string | number;
@@ -84,9 +101,19 @@ function StatTile({
   muted?: boolean;
 }) {
   return (
-    <div className={`min-w-0 rounded-[24px] border ${accent ? "border-cyan-300/20 bg-cyan-300/10" : "border-white/10 bg-white/5"} p-5 backdrop-blur-xl`}>
+    <div
+      className={`min-w-0 rounded-[24px] border ${
+        accent ? "border-cyan-300/20 bg-cyan-300/10" : "border-white/10 bg-white/5"
+      } p-5 backdrop-blur-xl`}
+    >
       <p className="text-[12px] uppercase tracking-[0.18em] text-white/40">{label}</p>
-      <p className={`mt-3 break-words text-3xl font-semibold tracking-tight ${muted ? "text-white/55" : "text-white"}`}>{value}</p>
+      <p
+        className={`mt-3 break-words text-3xl font-semibold tracking-tight ${
+          muted ? "text-white/55" : "text-white"
+        }`}
+      >
+        {value}
+      </p>
       {hint ? <p className="mt-2 text-[13px] leading-6 text-white/45">{hint}</p> : null}
     </div>
   );
@@ -96,7 +123,7 @@ function SectionCard({
   title,
   subtitle,
   children,
-  className = ""
+  className = "",
 }: {
   title: string;
   subtitle?: string;
@@ -104,17 +131,29 @@ function SectionCard({
   className?: string;
 }) {
   return (
-    <section className={`min-w-0 overflow-hidden rounded-[28px] border border-white/10 bg-white/5 p-5 shadow-soft backdrop-blur-xl sm:p-6 ${className}`}>
+    <section
+      className={`min-w-0 overflow-hidden rounded-[28px] border border-white/10 bg-white/5 p-5 shadow-soft backdrop-blur-xl sm:p-6 ${className}`}
+    >
       <div className="mb-5">
         <h2 className="text-[18px] font-semibold tracking-tight text-white">{title}</h2>
-        {subtitle ? <p className="mt-1 text-[13px] leading-6 text-white/50">{subtitle}</p> : null}
+        {subtitle ? (
+          <p className="mt-1 text-[13px] leading-6 text-white/50">{subtitle}</p>
+        ) : null}
       </div>
       {children}
     </section>
   );
 }
 
-function EmptyState({ title, text, action }: { title: string; text: string; action?: ReactNode; }) {
+function EmptyState({
+  title,
+  text,
+  action,
+}: {
+  title: string;
+  text: string;
+  action?: ReactNode;
+}) {
   return (
     <div className="min-w-0 overflow-hidden rounded-[24px] border border-dashed border-white/[0.12] bg-black/25 p-6 text-center">
       <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white/70">
@@ -142,6 +181,7 @@ export default function DashboardView({ snapshot }: Props) {
   const [rawKeyReveal, setRawKeyReveal] = useState<StoredKey | null>(null);
   const [storedKeys, setStoredKeys] = useState<StoredKey[]>([]);
   const [copiedSnippet, setCopiedSnippet] = useState(false);
+  const [copiedMcp, setCopiedMcp] = useState(false);
 
   useEffect(() => {
     if (!authed) return;
@@ -196,13 +236,19 @@ export default function DashboardView({ snapshot }: Props) {
 
   const averageLatency = useMemo(() => {
     if (selectedKeyRecentCalls.length === 0) return null;
-    const values = selectedKeyRecentCalls.map((call) => call.latency_ms).filter((v): v is number => typeof v === "number");
+    const values = selectedKeyRecentCalls
+      .map((call) => call.latency_ms)
+      .filter((v): v is number => typeof v === "number");
     if (values.length === 0) return null;
     return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
   }, [selectedKeyRecentCalls]);
 
+  const mcpUrl = `https://soloise-intel.vercel.app/mcp/${snapshot?.user.id ?? ""}`;
+
   async function getSessionToken() {
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     return session?.access_token ?? null;
   }
 
@@ -210,7 +256,9 @@ export default function DashboardView({ snapshot }: Props) {
     const token = await getSessionToken();
     setLoadingKeys(true);
     try {
-      const response = await fetch("/api/keys", { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      const response = await fetch("/api/keys", {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       const data = await response.json().catch(() => null);
       if (response.ok && Array.isArray(data)) {
         setKeys(data);
@@ -230,9 +278,9 @@ export default function DashboardView({ snapshot }: Props) {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ name })
+        body: JSON.stringify({ name }),
       });
       const data = await response.json().catch(() => null);
       if (!response.ok) return;
@@ -245,7 +293,7 @@ export default function DashboardView({ snapshot }: Props) {
           id: data.api_key.id,
           name: data.api_key.name,
           key_prefix: data.api_key.key_prefix,
-          raw_key: data.key
+          raw_key: data.key,
         };
         persistStoredKey(stored);
         setRawKeyReveal(stored);
@@ -264,11 +312,13 @@ export default function DashboardView({ snapshot }: Props) {
       const token = await getSessionToken();
       const response = await fetch(`/api/keys/${id}`, {
         method: "DELETE",
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       const data = await response.json().catch(() => null);
       if (response.ok) {
-        setKeys((current) => current.map((key) => key.id === id ? { ...key, is_active: false } : key));
+        setKeys((current) =>
+          current.map((key) => (key.id === id ? { ...key, is_active: false } : key))
+        );
       } else if (data?.error) {
         console.error(data.error);
       }
@@ -287,13 +337,19 @@ export default function DashboardView({ snapshot }: Props) {
 
   async function copySnippet() {
     const keyValue = selectedStoredKey?.raw_key || selectedKey?.key_prefix || "sk-sol-••••••••••••";
-    const snippet = `curl -X POST /api/recommend \
-  -H "Authorization: Bearer ${keyValue}" \
-  -H "Content-Type: application/json" \
+    const snippet = `curl -X POST "https://soloise-intel.vercel.app/recommend" \\
+  -H "Authorization: Bearer ${keyValue}" \\
+  -H "Content-Type: application/json" \\
   -d '{"query": "help users convert faster", "top_n": 3}'`;
     await navigator.clipboard.writeText(snippet);
     setCopiedSnippet(true);
     window.setTimeout(() => setCopiedSnippet(false), 1400);
+  }
+
+  async function copyMcpUrl() {
+    await navigator.clipboard.writeText(mcpUrl);
+    setCopiedMcp(true);
+    setTimeout(() => setCopiedMcp(false), 2000);
   }
 
   const totalShown = selectedKeyRecentCalls.length;
@@ -313,7 +369,9 @@ export default function DashboardView({ snapshot }: Props) {
                 A single premium dashboard for keys, credits, and analytics.
               </h1>
               <p className="max-w-3xl text-[15px] leading-7 text-white/55">
-                Open the dashboard, but API key creation stays disabled until you authenticate. After first login, your starter credits are attached automatically and the same page unlocks your key management flow.
+                Open the dashboard, but API key creation stays disabled until you authenticate.
+                After first login, your starter credits are attached automatically and the same
+                page unlocks your key management flow.
               </p>
             </div>
 
@@ -329,16 +387,28 @@ export default function DashboardView({ snapshot }: Props) {
                 <EmptyState
                   title="Sign in to create keys"
                   text="Your dashboard is visible, but this control stays locked until you log in."
-                  action={<Link href="/auth" className="inline-flex h-11 items-center justify-center rounded-2xl bg-white px-4 text-[14px] font-semibold text-black">Go to sign in</Link>}
+                  action={
+                    <Link
+                      href="/auth"
+                      className="inline-flex h-11 items-center justify-center rounded-2xl bg-white px-4 text-[14px] font-semibold text-black"
+                    >
+                      Go to sign in
+                    </Link>
+                  }
                 />
               </SectionCard>
 
-              <SectionCard title="Analytics" subtitle="Selected-key analytics appear here once you are in">
+              <SectionCard
+                title="Analytics"
+                subtitle="Selected-key analytics appear here once you are in"
+              >
                 <div className="space-y-4">
                   <div className="rounded-[24px] border border-white/10 bg-black/30 p-5">
                     <div className="flex items-center justify-between">
                       <p className="text-[13px] text-white/50">Usage preview</p>
-                      <span className="rounded-full border border-white/10 px-2 py-1 text-[11px] text-white/55">Locked</span>
+                      <span className="rounded-full border border-white/10 px-2 py-1 text-[11px] text-white/55">
+                        Locked
+                      </span>
                     </div>
                     <div className="mt-4 h-[160px] rounded-[20px] border border-dashed border-white/[0.12] bg-black/25" />
                   </div>
@@ -371,21 +441,40 @@ export default function DashboardView({ snapshot }: Props) {
                 Command center for your API.
               </h1>
               <p className="mt-3 max-w-3xl text-[15px] leading-7 text-white/55">
-                Create a key, copy it once, and keep the analytics on this page. No extra sections, no navigation sprawl, no overflow.
+                Create a key, copy it once, and keep the analytics on this page. No extra sections,
+                no navigation sprawl, no overflow.
               </p>
             </div>
 
             <div className="flex flex-wrap gap-3 min-w-0">
-              <StatTile label="Credits" value={credits} hint={lowCredits ? "Low balance" : "Ready to run"} accent={lowCredits} />
-              <StatTile label="API keys" value={keys.filter((key) => key.is_active).length} hint="Active keys" />
+              <StatTile
+                label="Credits"
+                value={credits}
+                hint={lowCredits ? "Low balance" : "Ready to run"}
+                accent={lowCredits}
+              />
+              <StatTile
+                label="API keys"
+                value={keys.filter((key) => key.is_active).length}
+                hint="Active keys"
+              />
             </div>
           </div>
 
           <div className="grid min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatTile label="Total calls" value={snapshot?.totalCalls ?? 0} hint="All-time usage" />
             <StatTile label="Selected key calls" value={totalShown} hint="Recent calls visible" />
-            <StatTile label="Success rate" value={`${selectedSuccessRate}%`} hint="On recent sample" accent />
-            <StatTile label="Avg latency" value={averageLatency == null ? "—" : `${averageLatency} ms`} hint="Recent sample" />
+            <StatTile
+              label="Success rate"
+              value={`${selectedSuccessRate}%`}
+              hint="On recent sample"
+              accent
+            />
+            <StatTile
+              label="Avg latency"
+              value={averageLatency == null ? "—" : `${averageLatency} ms`}
+              hint="Recent sample"
+            />
           </div>
 
           <div className="grid min-w-0 gap-5 lg:grid-cols-[1.05fr_0.95fr]">
@@ -404,7 +493,11 @@ export default function DashboardView({ snapshot }: Props) {
                     disabled={creating || !name.trim()}
                     className="inline-flex h-12 min-w-0 items-center justify-center gap-2 rounded-2xl bg-white px-4 text-[14px] font-semibold text-black transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {creating ? <RefreshCw className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
+                    {creating ? (
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <KeyRound className="h-4 w-4" />
+                    )}
                     Create key
                   </button>
                 </div>
@@ -413,7 +506,9 @@ export default function DashboardView({ snapshot }: Props) {
                   <div className="rounded-[26px] border border-amber-300/20 bg-amber-300/10 p-4">
                     <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                       <div>
-                        <p className="text-[13px] font-medium text-amber-100">Copy now. This full key is shown only once.</p>
+                        <p className="text-[13px] font-medium text-amber-100">
+                          Copy now. This full key is shown only once.
+                        </p>
                         <code className="mt-3 block break-all rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-[13px] leading-6 text-white">
                           {rawKeyReveal.raw_key}
                         </code>
@@ -441,11 +536,16 @@ export default function DashboardView({ snapshot }: Props) {
               </div>
             </SectionCard>
 
-            <SectionCard title="Selected key analytics" subtitle="Switch the key and the analytics update on this page">
+            <SectionCard
+              title="Selected key analytics"
+              subtitle="Switch the key and the analytics update on this page"
+            >
               <div className="space-y-4">
                 <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
                   <div className="rounded-[22px] border border-white/10 bg-black/35 p-4">
-                    <label className="block text-[12px] uppercase tracking-[0.18em] text-white/35">Active key</label>
+                    <label className="block text-[12px] uppercase tracking-[0.18em] text-white/35">
+                      Active key
+                    </label>
                     <select
                       value={selectedKeyId}
                       onChange={(e) => setSelectedKeyId(e.target.value)}
@@ -473,7 +573,9 @@ export default function DashboardView({ snapshot }: Props) {
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="text-[13px] text-white/45">Recent activity</p>
-                      <p className="mt-1 text-[18px] font-semibold text-white">{selectedKey?.name ?? "No key selected"}</p>
+                      <p className="mt-1 text-[18px] font-semibold text-white">
+                        {selectedKey?.name ?? "No key selected"}
+                      </p>
                     </div>
                     <button
                       type="button"
@@ -507,8 +609,14 @@ export default function DashboardView({ snapshot }: Props) {
                   <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
                     <MiniMetric label="Shown calls" value={totalShown} />
                     <MiniMetric label="Success" value={`${selectedSuccessRate}%`} />
-                    <MiniMetric label="Latency" value={averageLatency == null ? "—" : `${averageLatency} ms`} />
-                    <MiniMetric label="Last call" value={fmt(selectedKeyRecentCalls[0]?.created_at)} />
+                    <MiniMetric
+                      label="Latency"
+                      value={averageLatency == null ? "—" : `${averageLatency} ms`}
+                    />
+                    <MiniMetric
+                      label="Last call"
+                      value={fmt(selectedKeyRecentCalls[0]?.created_at)}
+                    />
                   </div>
                 </div>
               </div>
@@ -519,7 +627,9 @@ export default function DashboardView({ snapshot }: Props) {
             <SectionCard title="API keys" subtitle="Manage keys without leaving this page">
               <div className="space-y-3">
                 {loadingKeys ? (
-                  <div className="rounded-[22px] border border-white/10 bg-black/25 p-5 text-[13px] text-white/45">Refreshing keys…</div>
+                  <div className="rounded-[22px] border border-white/10 bg-black/25 p-5 text-[13px] text-white/45">
+                    Refreshing keys…
+                  </div>
                 ) : null}
 
                 {keys.length === 0 ? (
@@ -535,17 +645,31 @@ export default function DashboardView({ snapshot }: Props) {
                       return (
                         <div
                           key={key.id}
-                          className={`rounded-[24px] border p-4 transition ${selected ? "border-cyan-300/20 bg-cyan-300/10" : "border-white/10 bg-black/25"}`}
+                          className={`rounded-[24px] border p-4 transition ${
+                            selected
+                              ? "border-cyan-300/20 bg-cyan-300/10"
+                              : "border-white/10 bg-black/25"
+                          }`}
                         >
                           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                             <div className="min-w-0">
                               <div className="flex flex-wrap items-center gap-2">
-                                <p className="truncate text-[15px] font-medium text-white">{key.name}</p>
-                                <span className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${active ? "bg-emerald-400/10 text-emerald-200" : "bg-red-400/10 text-red-200"}`}>
+                                <p className="truncate text-[15px] font-medium text-white">
+                                  {key.name}
+                                </p>
+                                <span
+                                  className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${
+                                    active
+                                      ? "bg-emerald-400/10 text-emerald-200"
+                                      : "bg-red-400/10 text-red-200"
+                                  }`}
+                                >
                                   {active ? "Active" : "Revoked"}
                                 </span>
                               </div>
-                              <p className="mt-1 text-[13px] text-white/45">Prefix: {key.key_prefix ?? "—"} · Created {fmt(key.created_at)}</p>
+                              <p className="mt-1 text-[13px] text-white/45">
+                                Prefix: {key.key_prefix ?? "—"} · Created {fmt(key.created_at)}
+                              </p>
                             </div>
 
                             <div className="flex flex-wrap items-center gap-2">
@@ -562,7 +686,11 @@ export default function DashboardView({ snapshot }: Props) {
                                 disabled={!active || revoking === key.id}
                                 className="inline-flex h-10 items-center justify-center gap-2 rounded-2xl border border-red-400/[0.15] bg-red-500/10 px-4 text-[13px] font-medium text-red-100 transition hover:bg-red-500/[0.15] disabled:cursor-not-allowed disabled:opacity-50"
                               >
-                                {revoking === key.id ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                {revoking === key.id ? (
+                                  <RefreshCw className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-4 w-4" />
+                                )}
                                 Revoke
                               </button>
                             </div>
@@ -592,16 +720,35 @@ export default function DashboardView({ snapshot }: Props) {
                       </thead>
                       <tbody>
                         {selectedKeyRecentCalls.map((call, index) => (
-                          <tr key={call.id} className={index % 2 === 0 ? "bg-white/[0.02]" : "bg-transparent"}>
-                            <td className="px-4 py-3 text-[13px] text-white/55">{fmt(call.created_at)}</td>
-                            <td className="px-4 py-3 text-[13px] text-white/80">
-                              {call.key_id ? keys.find((key) => key.id === call.key_id)?.name ?? call.key_id : "—"}
+                          <tr
+                            key={call.id}
+                            className={index % 2 === 0 ? "bg-white/[0.02]" : "bg-transparent"}
+                          >
+                            <td className="px-4 py-3 text-[13px] text-white/55">
+                              {fmt(call.created_at)}
                             </td>
-                            <td className="px-4 py-3 text-[13px] text-white/70">{call.query_length ?? "—"}</td>
-                            <td className="px-4 py-3 text-[13px] text-white/70">{call.top_n ?? "—"}</td>
-                            <td className="px-4 py-3 text-[13px] text-white/70">{call.latency_ms == null ? "—" : `${call.latency_ms} ms`}</td>
+                            <td className="px-4 py-3 text-[13px] text-white/80">
+                              {call.key_id
+                                ? keys.find((key) => key.id === call.key_id)?.name ?? call.key_id
+                                : "—"}
+                            </td>
+                            <td className="px-4 py-3 text-[13px] text-white/70">
+                              {call.query_length ?? "—"}
+                            </td>
+                            <td className="px-4 py-3 text-[13px] text-white/70">
+                              {call.top_n ?? "—"}
+                            </td>
+                            <td className="px-4 py-3 text-[13px] text-white/70">
+                              {call.latency_ms == null ? "—" : `${call.latency_ms} ms`}
+                            </td>
                             <td className="px-4 py-3">
-                              <span className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-[11px] font-medium ${call.success ? "bg-emerald-400/10 text-emerald-200" : "bg-red-400/10 text-red-200"}`}>
+                              <span
+                                className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-[11px] font-medium ${
+                                  call.success
+                                    ? "bg-emerald-400/10 text-emerald-200"
+                                    : "bg-red-400/10 text-red-200"
+                                }`}
+                              >
                                 <span className="h-1.5 w-1.5 rounded-full bg-current" />
                                 {call.success ? "Success" : "Error"}
                               </span>
@@ -628,9 +775,14 @@ export default function DashboardView({ snapshot }: Props) {
             >
               <div className="space-y-4">
                 <div className="min-w-0 rounded-[24px] border border-white/10 bg-black/35 p-4">
-                  <p className="text-[12px] uppercase tracking-[0.18em] text-white/35">Authorization header</p>
+                  <p className="text-[12px] uppercase tracking-[0.18em] text-white/35">
+                    Authorization header
+                  </p>
                   <code className="mt-3 block break-all rounded-2xl border border-white/10 bg-black/45 px-4 py-3 text-[13px] text-white/80">
-                    Authorization: Bearer {selectedStoredKey?.raw_key ?? selectedKey?.key_prefix ?? "sk-sol-••••••••••••"}
+                    Authorization: Bearer{" "}
+                    {selectedStoredKey?.raw_key ??
+                      selectedKey?.key_prefix ??
+                      "sk-sol-••••••••••••"}
                   </code>
                 </div>
                 <div className="min-w-0 rounded-[24px] border border-white/10 bg-black/35 p-4">
@@ -645,10 +797,10 @@ export default function DashboardView({ snapshot }: Props) {
                     </button>
                   </div>
                   <pre className="mt-3 overflow-x-auto rounded-2xl border border-white/10 bg-black/45 p-4 text-[13px] leading-6 text-white/80">
-                    <code>{`curl -X POST /api/recommend \
-  -H "Authorization: Bearer ${selectedStoredKey?.raw_key ?? selectedKey?.key_prefix ?? "sk-sol-••••••••••••"}" \
-  -H "Content-Type: application/json" \
-  -d '{"query": "reduce signup drop-off", "top_n": 3}'`}</code>
+                    <code>{`curl -X POST "https://soloise-intel.vercel.app/recommend" \\
+  -H "Authorization: Bearer ${selectedStoredKey?.raw_key ?? selectedKey?.key_prefix ?? "sk-sol-••••••••••••"}" \\
+  -H "Content-Type: application/json" \\
+  -d '{"query": "help users convert faster", "top_n": 3}'`}</code>
                   </pre>
                 </div>
               </div>
@@ -656,10 +808,28 @@ export default function DashboardView({ snapshot }: Props) {
 
             <SectionCard title="Account status" subtitle="Everything stays on one page">
               <div className="grid gap-3 sm:grid-cols-2">
-                <StatusPill icon={<Activity className="h-4 w-4" />} label="Credits" value={credits.toString()} />
-                <StatusPill icon={<Zap className="h-4 w-4" />} label="Active keys" value={keys.filter((key) => key.is_active).length.toString()} />
-                <StatusPill icon={<ShieldCheck className="h-4 w-4" />} label="Selected key" value={selectedKey?.name ?? "—"} wide />
-                <StatusPill icon={<ArrowRight className="h-4 w-4" />} label="Manage" value="Inline actions only" wide />
+                <StatusPill
+                  icon={<Activity className="h-4 w-4" />}
+                  label="Credits"
+                  value={credits.toString()}
+                />
+                <StatusPill
+                  icon={<Zap className="h-4 w-4" />}
+                  label="Active keys"
+                  value={keys.filter((key) => key.is_active).length.toString()}
+                />
+                <StatusPill
+                  icon={<ShieldCheck className="h-4 w-4" />}
+                  label="Selected key"
+                  value={selectedKey?.name ?? "—"}
+                  wide
+                />
+                <StatusPill
+                  icon={<ArrowRight className="h-4 w-4" />}
+                  label="Manage"
+                  value="Inline actions only"
+                  wide
+                />
               </div>
               {lowCredits ? (
                 <div className="mt-4 rounded-[24px] border border-amber-300/20 bg-amber-300/10 p-4 text-[13px] text-amber-100">
@@ -668,13 +838,107 @@ export default function DashboardView({ snapshot }: Props) {
               ) : null}
             </SectionCard>
           </section>
+
+          {/* ── Claude MCP Connector ── */}
+          <SectionCard
+            title="Claude MCP Connector"
+            subtitle="Use your same credits directly inside Claude.ai"
+          >
+            <div className="space-y-4">
+              {/* Step 1 */}
+              <div className="rounded-[24px] border border-white/10 bg-black/35 p-4">
+                <p className="text-[12px] uppercase tracking-[0.18em] text-white/35">
+                  Step 1 — Copy your personal MCP URL
+                </p>
+                <div className="mt-3 flex items-center gap-2">
+                  <code className="flex-1 break-all rounded-2xl border border-cyan-300/20 bg-black/45 px-4 py-3 text-[13px] text-cyan-200">
+                    {mcpUrl}
+                  </code>
+                  <button
+                    type="button"
+                    onClick={copyMcpUrl}
+                    className="inline-flex h-10 shrink-0 items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 text-[12px] font-medium text-white transition hover:bg-white/10"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                    {copiedMcp ? "Copied!" : "Copy"}
+                  </button>
+                </div>
+                <p className="mt-2 text-[12px] text-white/35">
+                  This URL is tied to your account. Each tool call deducts 1 credit from your
+                  shared balance.
+                </p>
+              </div>
+
+              {/* Step 2 */}
+              <div className="rounded-[24px] border border-white/10 bg-black/35 p-4">
+                <p className="text-[12px] uppercase tracking-[0.18em] text-white/35">
+                  Step 2 — Add it to Claude.ai
+                </p>
+                <ol className="mt-3 space-y-2 text-[13px] leading-6 text-white/65">
+                  <li className="flex gap-2">
+                    <span className="text-cyan-300">1.</span>
+                    Go to{" "}
+                    <a
+                      href="https://claude.ai/customize/connectors"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-cyan-300 underline underline-offset-2"
+                    >
+                      claude.ai/customize/connectors
+                    </a>
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="text-cyan-300">2.</span>
+                    Click <strong className="text-white">+</strong> →{" "}
+                    <strong className="text-white">Add custom connector</strong>
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="text-cyan-300">3.</span>
+                    Paste your MCP URL above and click{" "}
+                    <strong className="text-white">Add</strong>
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="text-cyan-300">4.</span>
+                    In any Claude chat, click <strong className="text-white">+</strong> →{" "}
+                    <strong className="text-white">Connectors</strong> → enable{" "}
+                    <strong className="text-white">Soloise ABSIS</strong>
+                  </li>
+                </ol>
+              </div>
+
+              {/* Info row */}
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="rounded-[18px] border border-white/10 bg-black/35 p-3">
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-white/35">Credits</p>
+                  <p className="mt-2 text-[13px] font-medium text-white">Shared with API</p>
+                </div>
+                <div className="rounded-[18px] border border-white/10 bg-black/35 p-3">
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-white/35">
+                    Cost per call
+                  </p>
+                  <p className="mt-2 text-[13px] font-medium text-white">1 credit</p>
+                </div>
+                <div className="rounded-[18px] border border-white/10 bg-black/35 p-3">
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-white/35">Auth</p>
+                  <p className="mt-2 text-[13px] font-medium text-white">None needed</p>
+                </div>
+              </div>
+
+              {/* Warning if low credits */}
+              {credits <= 10 && (
+                <div className="rounded-[24px] border border-amber-300/20 bg-amber-300/10 p-4 text-[13px] text-amber-100">
+                  ⚠️ Only {credits} credits left. MCP calls will stop working when balance hits 0.
+                </div>
+              )}
+            </div>
+          </SectionCard>
         </div>
       </section>
     </main>
   );
 }
 
-function MiniMetric({ label, value }: { label: string; value: string | number; }) {
+function MiniMetric({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="min-w-0 rounded-[18px] border border-white/10 bg-black/35 p-3">
       <p className="text-[11px] uppercase tracking-[0.18em] text-white/35">{label}</p>
@@ -683,9 +947,23 @@ function MiniMetric({ label, value }: { label: string; value: string | number; }
   );
 }
 
-function StatusPill({ icon, label, value, wide = false }: { icon: ReactNode; label: string; value: string; wide?: boolean; }) {
+function StatusPill({
+  icon,
+  label,
+  value,
+  wide = false,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  wide?: boolean;
+}) {
   return (
-    <div className={`min-w-0 rounded-[24px] border border-white/10 bg-black/35 p-4 ${wide ? "sm:col-span-2" : ""}`}>
+    <div
+      className={`min-w-0 rounded-[24px] border border-white/10 bg-black/35 p-4 ${
+        wide ? "sm:col-span-2" : ""
+      }`}
+    >
       <div className="flex items-center gap-2 text-white/70">
         {icon}
         <span className="text-[12px] uppercase tracking-[0.18em] text-white/35">{label}</span>
@@ -694,5 +972,3 @@ function StatusPill({ icon, label, value, wide = false }: { icon: ReactNode; lab
     </div>
   );
 }
-
-
