@@ -243,7 +243,13 @@ export default function DashboardView({ snapshot }: Props) {
     return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
   }, [selectedKeyRecentCalls]);
 
-  const mcpUrl = `https://soloise-intel.vercel.app/mcp/${snapshot?.user.id ?? ""}`;
+  // ── FIX: MCP URL must embed the raw API key (sk-sol-...), not the Supabase
+  // user.id. The backend's /mcp/{connector_id} route treats the trailing path
+  // segment as the raw key when Claude's connector sends no Authorization
+  // header — a UUID like user.id will always fail lookup_key() and surface as
+  // "Couldn't register with sign-in service" in Claude's connector UI.
+  const mcpKey = selectedStoredKey?.raw_key ?? null;
+  const mcpUrl = mcpKey ? `https://soloise-intel.vercel.app/mcp/${mcpKey}` : "";
 
   async function getSessionToken() {
     const {
@@ -347,6 +353,7 @@ export default function DashboardView({ snapshot }: Props) {
   }
 
   async function copyMcpUrl() {
+    if (!mcpUrl) return;
     await navigator.clipboard.writeText(mcpUrl);
     setCopiedMcp(true);
     setTimeout(() => setCopiedMcp(false), 2000);
@@ -850,23 +857,35 @@ export default function DashboardView({ snapshot }: Props) {
                 <p className="text-[12px] uppercase tracking-[0.18em] text-white/35">
                   Step 1 — Copy your personal MCP URL
                 </p>
-                <div className="mt-3 flex items-center gap-2">
-                  <code className="flex-1 break-all rounded-2xl border border-cyan-300/20 bg-black/45 px-4 py-3 text-[13px] text-cyan-200">
-                    {mcpUrl}
-                  </code>
-                  <button
-                    type="button"
-                    onClick={copyMcpUrl}
-                    className="inline-flex h-10 shrink-0 items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 text-[12px] font-medium text-white transition hover:bg-white/10"
-                  >
-                    <Copy className="h-3.5 w-3.5" />
-                    {copiedMcp ? "Copied!" : "Copy"}
-                  </button>
-                </div>
-                <p className="mt-2 text-[12px] text-white/35">
-                  This URL is tied to your account. Each tool call deducts 1 credit from your
-                  shared balance.
-                </p>
+
+                {mcpUrl ? (
+                  <>
+                    <div className="mt-3 flex items-center gap-2">
+                      <code className="flex-1 break-all rounded-2xl border border-cyan-300/20 bg-black/45 px-4 py-3 text-[13px] text-cyan-200">
+                        {mcpUrl}
+                      </code>
+                      <button
+                        type="button"
+                        onClick={copyMcpUrl}
+                        className="inline-flex h-10 shrink-0 items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 text-[12px] font-medium text-white transition hover:bg-white/10"
+                      >
+                        <Copy className="h-3.5 w-3.5" />
+                        {copiedMcp ? "Copied!" : "Copy"}
+                      </button>
+                    </div>
+                    <p className="mt-2 text-[12px] text-white/35">
+                      This URL embeds your raw API key. Copy and save it now — for security we
+                      don&apos;t store the full key, so it won&apos;t be retrievable again after you
+                      navigate away. Each tool call deducts 1 credit from your shared balance.
+                    </p>
+                  </>
+                ) : (
+                  <div className="mt-3 rounded-2xl border border-amber-300/20 bg-amber-300/10 px-4 py-3 text-[13px] text-amber-100">
+                    {selectedKey
+                      ? "Your full key for this selection isn't in memory anymore. Create a new key above to generate a fresh MCP URL."
+                      : "Create an API key above first — the MCP URL is generated from your raw key, which is only ever shown once."}
+                  </div>
+                )}
               </div>
 
               {/* Step 2 */}
@@ -920,7 +939,7 @@ export default function DashboardView({ snapshot }: Props) {
                 </div>
                 <div className="rounded-[18px] border border-white/10 bg-black/35 p-3">
                   <p className="text-[11px] uppercase tracking-[0.18em] text-white/35">Auth</p>
-                  <p className="mt-2 text-[13px] font-medium text-white">None needed</p>
+                  <p className="mt-2 text-[13px] font-medium text-white">Embedded in URL</p>
                 </div>
               </div>
 
