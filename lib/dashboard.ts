@@ -45,7 +45,7 @@ export async function getDashboardSnapshot(): Promise<DashboardSnapshot | null> 
     admin.from("api_keys").select("id,name,key_prefix,is_active,created_at").eq("user_id", user.id).order("created_at", { ascending: false }),
     admin.from("usage_logs").select("id", { count: "exact", head: true }).eq("user_id", user.id),
     admin.from("usage_logs").select("latency_ms").eq("user_id", user.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
-    admin.from("usage_logs").select("id,key_id,query_length,top_n,latency_ms,success,created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(10)
+    admin.from("usage_logs").select("id,key_id,query_length,top_n,latency_ms,success,created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(60)
   ]);
 
   return {
@@ -58,5 +58,3 @@ export async function getDashboardSnapshot(): Promise<DashboardSnapshot | null> 
     recentCalls: (recentRes.data ?? []) as UsageLog[]
   };
 }
-
-

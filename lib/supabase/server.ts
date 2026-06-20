@@ -22,6 +22,3 @@ export async function createSupabaseServerClient() {
     }
   });
 }
-
-
-

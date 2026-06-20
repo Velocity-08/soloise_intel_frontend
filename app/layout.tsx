@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import SiteTopbar from "@/components/site-topbar";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getDashboardSnapshot } from "@/lib/dashboard";
 import "./globals.css";
 import type { ReactNode } from "react";
 
@@ -17,34 +18,38 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Soloise — Behavioral Intelligence API",
-  description: "A single-premium dashboard for auth, API keys, and usage analytics."
+  description: "API keys, credits, and live analytics in one minimal dashboard."
 };
 
-async function getUserEmail() {
+async function getTopbarData() {
   try {
     const supabase = await createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
-    return user?.email ?? null;
+    if (!user) return { email: null as string | null, credits: 0, totalCredits: 1000 };
+    const snap = await getDashboardSnapshot();
+    return {
+      email: user.email ?? null,
+      credits: snap?.credits ?? 0,
+      totalCredits: 1000
+    };
   } catch {
-    return null;
+    return { email: null as string | null, credits: 0, totalCredits: 1000 };
   }
 }
 
 export default async function RootLayout({
   children
 }: Readonly<{ children: ReactNode }>) {
-  const userEmail = await getUserEmail();
+  const { email, credits, totalCredits } = await getTopbarData();
 
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body>
-        <SiteTopbar userEmail={userEmail} />
-        <div style={{ paddingTop: "var(--topbar-h, 68px)" }}>
+        <SiteTopbar userEmail={email} credits={credits} totalCredits={totalCredits} />
+        <div style={{ paddingTop: "var(--topbar-h, 56px)" }}>
           {children}
         </div>
       </body>
     </html>
   );
 }
-
-

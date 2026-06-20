@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { FormEvent, ReactNode } from "react";
+import type { FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
-import { ArrowRight, Sparkles, Shield, Zap } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, Github } from "lucide-react";
 
 type Mode = "signin" | "signup";
 
@@ -25,12 +25,50 @@ function GoogleIcon() {
   );
 }
 
+function StepCard({
+  index,
+  title,
+  active,
+  done,
+}: {
+  index: number;
+  title: string;
+  active?: boolean;
+  done?: boolean;
+}) {
+  return (
+    <div
+      className={`relative flex h-full min-h-[92px] flex-col justify-between rounded-[10px] border p-3.5 transition ${
+        active
+          ? "border-white bg-white text-black"
+          : "border-white/15 bg-white/[0.04] text-white/80"
+      }`}
+    >
+      <div
+        className={`flex h-6 w-6 items-center justify-center rounded-full text-[12px] font-semibold ${
+          active
+            ? "bg-black text-white"
+            : done
+            ? "bg-[#FF5C1F] text-black"
+            : "border border-white/20 text-white/60"
+        }`}
+      >
+        {index}
+      </div>
+      <p className={`text-[12px] leading-[16px] font-medium ${active ? "text-black" : ""}`}>
+        {title}
+      </p>
+    </div>
+  );
+}
+
 export default function AuthForm() {
   const router = useRouter();
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -89,162 +127,191 @@ export default function AuthForm() {
     }
   }
 
+  const heading = mode === "signin" ? "Welcome back" : "Sign up account";
+  const sub =
+    mode === "signin"
+      ? "Sign in to your account to manage keys and credits."
+      : "Enter your details to create your account.";
+
   return (
-    <div className="grid w-full max-w-6xl gap-6 lg:grid-cols-[1.05fr_0.95fr]">
-      <section className="relative overflow-hidden rounded-[28px] border border-white/10 bg-white/5 p-8 shadow-soft backdrop-blur-xl sm:p-10">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.18),transparent_35%),radial-gradient(circle_at_bottom_left,rgba(16,185,129,0.14),transparent_30%)]" />
-        <div className="relative">
-          <div className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-[12px] text-cyan-100">
-            <Sparkles className="h-3.5 w-3.5" />
-            Premium dashboard access
-          </div>
+    <div className="w-full">
+      <div className="grid w-full overflow-hidden rounded-[14px] border border-white/[0.1] bg-[#0a0a0a] shadow-[0_30px_80px_-20px_rgba(255,92,31,0.25)] lg:grid-cols-[1.05fr_1fr]">
+        {/* LEFT — orange/yellow glow panel with steps */}
+        <section className="relative overflow-hidden p-7 sm:p-10">
+          {/* radial glow */}
+          <div
+            aria-hidden
+            className="absolute inset-0 opacity-90"
+            style={{
+              background:
+                "radial-gradient(75% 65% at 25% 30%, rgba(255,92,31,0.65) 0%, rgba(245,197,24,0.18) 35%, transparent 70%), radial-gradient(60% 50% at 80% 90%, rgba(255,92,31,0.35) 0%, transparent 60%), #0a0a0a"
+            }}
+          />
+          {/* subtle grid */}
+          <div
+            aria-hidden
+            className="absolute inset-0 opacity-[0.12] mix-blend-overlay"
+            style={{
+              backgroundImage:
+                "linear-gradient(rgba(255,255,255,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.4) 1px, transparent 1px)",
+              backgroundSize: "40px 40px"
+            }}
+          />
 
-          <h1 className="mt-6 max-w-xl text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-            One account.
-            <span className="block text-white/70">Keys, credits, and analytics in one place.</span>
-          </h1>
+          <div className="relative flex h-full min-h-[460px] flex-col">
+            <div className="inline-flex w-fit items-center gap-2 rounded-full border border-white/20 bg-black/30 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-white backdrop-blur">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#F5C518]" />
+              Soloise · API
+            </div>
 
-          <p className="mt-5 max-w-2xl text-[15px] leading-7 text-white/60">
-            Sign in to unlock API key creation. Your starter credits stay attached to the first authenticated session, and your usage analytics live on the same dashboard.
-          </p>
+            <h1 className="mt-auto pt-12 text-[40px] leading-[1.05] font-semibold tracking-tight text-white sm:text-[48px]">
+              Get Started <br /> with Us
+            </h1>
+            <p className="mt-3 max-w-[320px] text-[14px] leading-6 text-white/75">
+              Complete these easy steps to register and start using the API.
+            </p>
 
-          <div className="mt-8 grid gap-4 sm:grid-cols-3">
-            <InfoChip icon={<Shield className="h-4 w-4" />} title="Secure" text="Supabase auth and protected keys" />
-            <InfoChip icon={<Zap className="h-4 w-4" />} title="Fast" text="Single-page workflow" />
-            <InfoChip icon={<ArrowRight className="h-4 w-4" />} title="Focused" text="No extra navigation clutter" />
-          </div>
-
-          <div className="mt-10 rounded-[24px] border border-white/10 bg-black/40 p-4">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <PreviewCard title="Dashboard" text="Locked until sign-in" />
-              <PreviewCard title="API keys" text="Create from the same screen" />
-              <PreviewCard title="Analytics" text="Selected key usage on demand" />
-              <PreviewCard title="Credits" text="Starter balance on first login" />
+            {/* Step cards */}
+            <div className="mt-6 grid grid-cols-3 gap-3">
+              <StepCard index={1} title="Sign up your account" active />
+              <StepCard index={2} title="Create your API key" />
+              <StepCard index={3} title="Make your first call" />
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section className="rounded-[28px] border border-white/10 bg-[#0b0b0d]/92 p-6 shadow-soft backdrop-blur-xl sm:p-8">
-        <div className="mx-auto w-full max-w-[460px]">
-          <div>
-            <p className="text-[13px] font-medium uppercase tracking-[0.2em] text-white/45">Authentication</p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white">
-              {mode === "signin" ? "Welcome back" : "Create your account"}
-            </h2>
-            <p className="mt-2 text-[14px] leading-6 text-white/55">
-              {mode === "signin"
-                ? "Open the dashboard, unlock your keys, and monitor every request from one panel."
-                : "Create an account to unlock the dashboard and receive starter credits on first login."}
+        {/* RIGHT — dark form */}
+        <section className="bg-black p-7 sm:p-10">
+          <div className="mx-auto w-full max-w-[400px]">
+            <div className="text-center">
+              <h2 className="text-[26px] font-semibold tracking-tight text-white">{heading}</h2>
+              <p className="mt-1.5 text-[13px] text-white/55">{sub}</p>
+            </div>
+
+            {/* OAuth row */}
+            <div className="mt-6 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={signInWithGoogle}
+                disabled={loading}
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] border border-white/[0.1] bg-white/[0.03] px-3 text-[13px] font-medium text-white transition hover:bg-white/[0.06] disabled:opacity-60"
+              >
+                <GoogleIcon />
+                Google
+              </button>
+              <button
+                type="button"
+                disabled
+                title="Coming soon"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] border border-white/[0.1] bg-white/[0.03] px-3 text-[13px] font-medium text-white/60 cursor-not-allowed"
+              >
+                <Github className="h-4 w-4" />
+                GitHub
+              </button>
+            </div>
+
+            <div className="my-5 flex items-center gap-3 text-center text-[11px] uppercase tracking-[0.2em] text-white/30">
+              <span className="flex-1 border-t border-white/[0.08]" />
+              <span>or</span>
+              <span className="flex-1 border-t border-white/[0.08]" />
+            </div>
+
+            <form onSubmit={submitEmailAuth} className="space-y-3.5">
+              <label className="block">
+                <span className="mb-1.5 block text-[12px] font-medium text-white/75">Email</span>
+                <input
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="h-10 w-full rounded-[8px] border border-white/[0.1] bg-[#0a0a0a] px-3 text-[13px] text-white outline-none placeholder:text-white/30 transition focus:border-[#FF5C1F]/70 focus:ring-2 focus:ring-[#FF5C1F]/15"
+                  placeholder="you@company.com"
+                />
+              </label>
+
+              <label className="block">
+                <span className="mb-1.5 block text-[12px] font-medium text-white/75">Password</span>
+                <div className="relative">
+                  <input
+                    type={showPw ? "text" : "password"}
+                    autoComplete={mode === "signin" ? "current-password" : "new-password"}
+                    minLength={6}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="h-10 w-full rounded-[8px] border border-white/[0.1] bg-[#0a0a0a] px-3 pr-10 text-[13px] text-white outline-none placeholder:text-white/30 transition focus:border-[#FF5C1F]/70 focus:ring-2 focus:ring-[#FF5C1F]/15"
+                    placeholder="••••••••"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPw((v) => !v)}
+                    aria-label={showPw ? "Hide password" : "Show password"}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/80 transition"
+                  >
+                    {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                {mode === "signup" ? (
+                  <p className="mt-1.5 text-[11px] text-white/40">Must be at least 6 characters.</p>
+                ) : null}
+              </label>
+
+              {error ? (
+                <div className="rounded-[8px] border border-red-400/20 bg-red-500/10 px-3 py-2 text-[12px] text-red-200">
+                  {error}
+                </div>
+              ) : null}
+              {notice ? (
+                <div className="rounded-[8px] border border-[#F5C518]/25 bg-[#F5C518]/10 px-3 py-2 text-[12px] text-[#F5C518]">
+                  {notice}
+                </div>
+              ) : null}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="group relative inline-flex h-11 w-full items-center justify-center gap-2 overflow-hidden rounded-[8px] bg-gradient-to-r from-[#FF5C1F] to-[#FFA033] px-4 text-[14px] font-semibold text-black transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <span className="relative z-10">
+                  {loading ? "Working..." : mode === "signin" ? "Sign in" : "Sign up"}
+                </span>
+                <ArrowRight className="relative z-10 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              </button>
+            </form>
+
+            <p className="mt-5 text-center text-[12px] text-white/45">
+              {mode === "signin" ? (
+                <>
+                  Don&apos;t have an account?{" "}
+                  <button
+                    type="button"
+                    onClick={() => { setMode("signup"); setError(null); setNotice(null); }}
+                    className="font-medium text-[#FF7A2D] hover:text-[#FFD84D] transition"
+                  >
+                    Sign up
+                  </button>
+                </>
+              ) : (
+                <>
+                  Already have an account?{" "}
+                  <button
+                    type="button"
+                    onClick={() => { setMode("signin"); setError(null); setNotice(null); }}
+                    className="font-medium text-[#FF7A2D] hover:text-[#FFD84D] transition"
+                  >
+                    Log in
+                  </button>
+                </>
+              )}
             </p>
           </div>
-
-          <button
-            type="button"
-            onClick={signInWithGoogle}
-            disabled={loading}
-            className="mt-7 inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 text-[14px] font-medium text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <GoogleIcon />
-            Continue with Google
-          </button>
-
-          <div className="my-5 flex items-center gap-3 text-center text-[11px] uppercase tracking-[0.18em] text-white/30">
-            <span className="flex-1 border-t border-white/10" />
-            <span>or email</span>
-            <span className="flex-1 border-t border-white/10" />
-          </div>
-
-          <div className="grid grid-cols-2 gap-0 overflow-hidden rounded-2xl border border-white/10 bg-white/5">
-            <button
-              type="button"
-              onClick={() => setMode("signin")}
-              className={`h-11 text-[14px] font-medium transition ${
-                mode === "signin" ? "bg-white text-black" : "bg-transparent text-white/70 hover:bg-white/5"
-              }`}
-            >
-              Sign in
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode("signup")}
-              className={`h-11 text-[14px] font-medium transition ${
-                mode === "signup" ? "bg-white text-black" : "bg-transparent text-white/70 hover:bg-white/5"
-              }`}
-            >
-              Create account
-            </button>
-          </div>
-
-          <form onSubmit={submitEmailAuth} className="mt-5 space-y-4">
-            <label className="block">
-              <span className="mb-2 block text-[13px] font-medium text-white/80">Email</span>
-              <input
-                type="email"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="h-11 w-full rounded-2xl border border-white/10 bg-black/40 px-4 text-[14px] text-white outline-none placeholder:text-white/30 focus:border-cyan-300/40"
-                placeholder="you@company.com"
-              />
-            </label>
-
-            <label className="block">
-              <span className="mb-2 block text-[13px] font-medium text-white/80">Password</span>
-              <input
-                type="password"
-                autoComplete={mode === "signin" ? "current-password" : "new-password"}
-                minLength={6}
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="h-11 w-full rounded-2xl border border-white/10 bg-black/40 px-4 text-[14px] text-white outline-none placeholder:text-white/30 focus:border-cyan-300/40"
-                placeholder="••••••••"
-              />
-            </label>
-
-            {error ? <div className="rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-[13px] text-red-200">{error}</div> : null}
-            {notice ? <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-[13px] text-emerald-200">{notice}</div> : null}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-white px-4 text-[14px] font-semibold text-black transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {loading ? "Working..." : mode === "signin" ? "Sign in" : "Create account"}
-              <ArrowRight className="h-4 w-4" />
-            </button>
-          </form>
-
-          <p className="mt-5 text-[13px] leading-6 text-white/40">
-            Starter credits are attached to the first login, and everything stays in the same dashboard after that.
-          </p>
-        </div>
-      </section>
-    </div>
-  );
-}
-
-function InfoChip({ icon, title, text }: { icon: ReactNode; title: string; text: string; }) {
-  return (
-    <div className="rounded-[22px] border border-white/10 bg-black/30 p-4">
-      <div className="flex items-center gap-2 text-white">
-        {icon}
-        <span className="text-[13px] font-medium">{title}</span>
+        </section>
       </div>
-      <p className="mt-2 text-[13px] leading-6 text-white/50">{text}</p>
+
+      <p className="mt-6 text-center text-[11px] text-white/30">
+        By continuing, you agree to the Terms and Privacy Policy.
+      </p>
     </div>
   );
 }
-
-function PreviewCard({ title, text }: { title: string; text: string; }) {
-  return (
-    <div className="rounded-[20px] border border-white/10 bg-white/5 p-4">
-      <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-white/35">{title}</p>
-      <p className="mt-2 text-[14px] text-white/75">{text}</p>
-    </div>
-  );
-}
-
-

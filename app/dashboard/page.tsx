@@ -7,5 +7,3 @@ export default async function DashboardPage() {
   const snapshot = await getDashboardSnapshot();
   return <DashboardView snapshot={snapshot} />;
 }
-
-

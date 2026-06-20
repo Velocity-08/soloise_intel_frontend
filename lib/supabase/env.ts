@@ -26,4 +26,3 @@ export function getSupabaseServiceRoleKey() {
 export function hasSupabaseConfig() {
   return Boolean(getSupabaseUrl() && getSupabaseAnonKey());
 }
-

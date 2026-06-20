@@ -6,5 +6,3 @@ export default function DashboardLayout({
 }: Readonly<{ children: ReactNode }>) {
   return children;
 }
-
-

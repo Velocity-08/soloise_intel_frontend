@@ -11,12 +11,10 @@ export default async function AuthPage() {
   if (user) redirect("/dashboard");
 
   return (
-    <main className="min-h-[calc(100vh-68px)] px-6 py-10">
-      <div className="mx-auto flex min-h-[calc(100vh-120px)] max-w-6xl items-center justify-center">
+    <main className="min-h-[calc(100vh-var(--topbar-h))] bg-black px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mx-auto flex min-h-[calc(100vh-var(--topbar-h)-3rem)] max-w-[1180px] items-center justify-center">
         <AuthForm />
       </div>
     </main>
   );
 }
-
-

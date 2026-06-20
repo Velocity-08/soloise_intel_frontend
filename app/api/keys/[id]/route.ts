@@ -56,5 +56,3 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
   applyCookies(response, cookiesToSet);
   return response;
 }
-
-
